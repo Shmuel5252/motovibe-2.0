@@ -21,11 +21,21 @@ const ISRAEL_DEFAULT_ZOOM = 11;
  * @param {string} props.apiKey - מפתח Google Maps מהסביבה.
  * @returns {JSX.Element} מפת Google עם מרקר אופציונלי.
  */
-function RideActiveMap({ center, myLocation, apiKey }) {
-  const { isLoaded: isMapLoaded } = useJsApiLoader({
-    id: "motovibe-ride-map",
-    googleMapsApiKey: apiKey,
-  });
+function RideActiveMap({
+  center,
+  myLocation,
+  apiKey,
+  isMapLoaded,
+  mapLoadError,
+}) {
+
+  if (mapLoadError) {
+    return (
+      <div className="flex h-full items-center justify-center bg-slate-900/60 text-sm text-slate-200">
+        שגיאה בטעינת המפה
+      </div>
+    );
+  }
 
   if (!isMapLoaded) {
     return (
@@ -61,6 +71,21 @@ function RideActiveMap({ center, myLocation, apiKey }) {
  * @returns {JSX.Element} מעטפת ניווט עם תוכן דינמי לפי לשונית פעילה.
  */
 function App() {
+  const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+
+  const LOADER_OPTIONS = {
+    id: "motovibe-google-maps",
+    googleMapsApiKey,
+    libraries: ["places"],
+    language: "he",
+    region: "IL",
+    authReferrerPolicy: "origin",
+  };
+
+  /* טוענים את Google Maps פעם אחת בלבד כדי למנוע קונפליקט אופציות. */
+  const { isLoaded: isGoogleMapsLoaded, loadError: googleMapsLoadError } =
+    useJsApiLoader(LOADER_OPTIONS);
+
   const [selectedChip, setSelectedChip] = useState("הכל");
 
   /*
@@ -280,18 +305,13 @@ function App() {
    * @param {() => void} props.onBack - חזרה למסך המסלולים במקרה fallback.
    * @returns {JSX.Element} תכולת מפה עם קו מסלול.
    */
-  function RouteDetailsMap({ apiKey, path, onBack }) {
+  function RouteDetailsMap({ apiKey, path, onBack, isMapLoaded, mapLoadError }) {
     const [mapInstance, setMapInstance] = useState(null);
     const [directionsResult, setDirectionsResult] = useState(null);
     const [directionsStatus, setDirectionsStatus] = useState("ממתין...");
     const [directionsErrorMessage, setDirectionsErrorMessage] = useState("");
 
     const normalizedApiKey = apiKey?.trim() ?? "";
-
-    const { isLoaded: isMapLoaded, loadError } = useJsApiLoader({
-      id: "motovibe-route-details-map",
-      googleMapsApiKey: normalizedApiKey,
-    });
 
     /* בטיחות Polyline: אם הנתיב לא תקין, לא מציירים קו. */
     const safePath = getSafePolylinePath(path);
@@ -383,7 +403,7 @@ function App() {
     }
 
     /* fallback לשגיאת טעינת סקריפט מפה. */
-    if (loadError) {
+    if (mapLoadError) {
       return (
         <GlassCard className="h-full" title="מפת מסלול">
           <p className="text-sm text-slate-200">שגיאה בטעינת המפה</p>
@@ -523,6 +543,9 @@ function App() {
     selectedRoute,
     onMinimize,
     onFinish,
+    mapApiKey,
+    isMapLoaded,
+    mapLoadError,
   }) {
     /* אתחול מפה: מרכז ברירת מחדל בישראל וזום ראשוני. */
     const [mapCenter, setMapCenter] = useState(ISRAEL_DEFAULT_CENTER);
@@ -533,9 +556,8 @@ function App() {
     /* סטטוס GPS במקרה של דחייה/חוסר תמיכה. */
     const [isGpsUnavailable, setIsGpsUnavailable] = useState(false);
 
-    const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
     /* אם אין מפתח — לא טוענים Google Maps ומציגים הודעת fallback בעברית. */
-    const hasGoogleMapsApiKey = Boolean(googleMapsApiKey);
+    const hasGoogleMapsApiKey = Boolean(mapApiKey);
 
     /* GPS חד־פעמי: ניסיון יחיד לקבלת מיקום נוכחי בזמן mount. */
     useEffect(() => {
@@ -634,7 +656,9 @@ function App() {
                   <RideActiveMap
                     center={mapCenter}
                     myLocation={myLocation}
-                    apiKey={googleMapsApiKey}
+                    apiKey={mapApiKey}
+                    isMapLoaded={isMapLoaded}
+                    mapLoadError={mapLoadError}
                   />
                 )}
               </div>
@@ -830,10 +854,10 @@ function App() {
     setIsRideMinimized,
     setDidStartFromRoute,
     onNavigate,
+    mapApiKey,
+    isMapLoaded,
+    mapLoadError,
   }) => {
-    /* מפתח Google Maps קיים כבר בפרויקט; ללא מפתח מוצג fallback ברור. */
-    const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-
     /* סינון מקומי בסיסי למסלולים לפי חיפוש וכרטיסיית טווח. */
     const normalizedSearch = routesSearchQuery.trim().toLowerCase();
     const visibleRoutes = routes.filter((route) => {
@@ -879,9 +903,11 @@ function App() {
             <section className="mt-6">
               <div className="mv-card overflow-hidden rounded-2xl border border-white/10">
                 <RouteDetailsMap
-                  apiKey={googleMapsApiKey}
+                  apiKey={mapApiKey}
                   path={routePath}
                   onBack={goToRoutesListView}
+                  isMapLoaded={isMapLoaded}
+                  mapLoadError={mapLoadError}
                 />
               </div>
             </section>
@@ -1083,6 +1109,9 @@ function App() {
     didStartFromRoute,
     setDidStartFromRoute,
     onNavigate,
+    mapApiKey,
+    isMapLoaded,
+    mapLoadError,
   }) => {
     /* מציגים מסלול רק אם המשתמש התחיל רכיבה מתוך מסך Routes. */
     const rideSelectedRoute =
@@ -1095,6 +1124,9 @@ function App() {
           isRidePaused={isRidePaused}
           setIsRidePaused={setIsRidePaused}
           selectedRoute={rideSelectedRoute}
+          mapApiKey={mapApiKey}
+          isMapLoaded={isMapLoaded}
+          mapLoadError={mapLoadError}
           onMinimize={() => {
             setIsRideMinimized(true);
             onNavigate("home");
@@ -1668,6 +1700,9 @@ function App() {
             setIsRideMinimized,
             setDidStartFromRoute,
             onNavigate: navigateTo,
+            mapApiKey: googleMapsApiKey,
+            isMapLoaded: isGoogleMapsLoaded,
+            mapLoadError: googleMapsLoadError,
           });
         }
 
@@ -1684,6 +1719,9 @@ function App() {
             didStartFromRoute,
             setDidStartFromRoute,
             onNavigate: navigateTo,
+            mapApiKey: googleMapsApiKey,
+            isMapLoaded: isGoogleMapsLoaded,
+            mapLoadError: googleMapsLoadError,
           });
         }
 
