@@ -1,30 +1,18 @@
 import Button from "./app/ui/components/Button";
 import GlassCard from "./app/ui/components/GlassCard";
+import AppShell from "./app/layouts/AppShell";
 
 /**
- * מסך הבית/אימות ויזואלי של MotoVibe במבנה RTL.
- * מרכיב את אזורי ה־Hero, הכרטיסים והסטטיסטיקות באמצעות קומפוננטות מערכת העיצוב.
+ * מסך הבית הראשי במבנה RTL.
+ * מציג את אזורי ה־Hero, הכרטיסים והסטטיסטיקות בתוך מעטפת הניווט.
  * @returns {JSX.Element} מסך ראשי מלא בגובה viewport.
  */
 function App() {
   return (
-    <div dir="rtl" className="mv-bg">
+    <AppShell>
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 pb-6 pt-5 sm:px-6">
-        {/* סרגל עליון: תפריט + wordmark */}
-        <header className="flex items-center justify-between">
-          <button
-            type="button"
-            className="mv-card inline-flex h-10 w-10 items-center justify-center rounded-xl text-2xl leading-none text-slate-200"
-            aria-label="menu"
-          >
-            ≡
-          </button>
-          <span className="text-lg font-semibold tracking-wide text-white/90">
-            MotoVibe
-          </span>
-        </header>
-
-        <main className="mt-10 flex-1">
+        {/* תוכן המסך הראשי ללא מיתוג, כדי שהלוגו יופיע רק ב־TopNav */}
+        <main className="mt-6 flex-1">
           {/* אזור Hero: פתיח וכפתור פעולה ראשי */}
           <section>
             <h1 className="text-4xl font-bold leading-tight sm:text-5xl">
@@ -72,7 +60,7 @@ function App() {
           </div>
         </section>
       </div>
-    </div>
+    </AppShell>
   );
 }
 
