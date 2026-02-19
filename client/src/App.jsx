@@ -10,6 +10,12 @@ import AppShell from "./app/layouts/AppShell";
  */
 function App() {
   const [selectedChip, setSelectedChip] = useState("הכל");
+  
+  /*
+   * המסלול הנבחר לתצוגת פרטים בתוך מסך המסלולים.
+   * כאשר null מוצגת רשימת המסלולים, וכאשר יש ערך מוצג Route Details.
+   */
+  const [selectedRoute, setSelectedRoute] = useState(null);
 
   /*
    * Placeholder לנתוני מסלולים.
@@ -19,19 +25,28 @@ function App() {
     {
       id: "route-1",
       title: "רמת השרון → תל אביב",
-      meta: "42 ק״מ • 45 דק׳",
+      from: "רמת השרון",
+      to: "תל אביב",
+      distanceKm: 42,
+      etaMin: 45,
       tags: ["כביש", "לילה", "מהיר"],
     },
     {
       id: "route-2",
       title: "כביש החוף → חיפה",
-      meta: "96 ק״מ • 70 דק׳",
+      from: "כביש החוף",
+      to: "חיפה",
+      distanceKm: 96,
+      etaMin: 70,
       tags: ["כביש", "לילה", "מהיר"],
     },
     {
       id: "route-3",
       title: "הרי ירושלים → בית שמש",
-      meta: "38 ק״מ • 52 דק׳",
+      from: "הרי ירושלים",
+      to: "בית שמש",
+      distanceKm: 38,
+      etaMin: 52,
       tags: ["כביש", "לילה", "מהיר"],
     },
   ];
@@ -129,13 +144,9 @@ function App() {
     <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 pb-10 pt-5 sm:px-6">
       <main className="mt-6 flex-1">
         {/* כותרת מסך + שורת חיפוש */}
-        <section>
-          <h1 className="text-3xl font-bold leading-tight sm:text-4xl">
-            מסלולים
-          </h1>
-          <p className="mt-2 text-base text-slate-300 sm:text-lg">
-            בחר מסלול וצא לרכיבה
-          </p>
+        <section className="transition-all duration-300 ease-out">
+          <h1 className="text-3xl font-bold leading-tight sm:text-4xl">מסלולים</h1>
+          <p className="mt-2 text-base text-slate-300 sm:text-lg">בחר מסלול וצא לרכיבה</p>
 
           <div className="mv-card mt-5 p-2">
             <input
@@ -169,8 +180,18 @@ function App() {
           </div>
         </section>
 
-        {/* רשימת כרטיסי מסלולים (Mock עד חיבור API) */}
-        <section className="mt-6 space-y-4">
+        {/*
+          בלוק רשימת המסלולים.
+          מוסתר כאשר יש selectedRoute כדי לפנות מקום לתצוגת פרטים.
+        */}
+        <section
+          className={[
+            "mt-6 space-y-4 transition-all duration-300 ease-out",
+            selectedRoute
+              ? "pointer-events-none h-0 translate-y-2 overflow-hidden opacity-0"
+              : "translate-y-0 opacity-100",
+          ].join(" ")}
+        >
           {routes.map((route) => (
             <GlassCard
               key={route.id}
@@ -191,25 +212,22 @@ function App() {
                 </div>
 
                 <div>
-                  <h3 className="text-base font-semibold text-slate-100">
-                    {route.title}
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-400">{route.meta}</p>
+                  <h3 className="text-base font-semibold text-slate-100">{route.title}</h3>
+                  <p className="mt-1 text-sm text-slate-400">
+                    {route.distanceKm} ק״מ • {route.etaMin} דק׳
+                  </p>
 
                   <div className="mt-3 flex flex-wrap gap-2">
                     {route.tags.map((tag) => (
-                      <span
-                        key={`${route.id}-${tag}`}
-                        className="mv-pill px-2.5 py-1 text-xs text-slate-200"
-                      >
+                      <span key={`${route.id}-${tag}`} className="mv-pill px-2.5 py-1 text-xs text-slate-200">
                         {tag}
                       </span>
                     ))}
                   </div>
 
-                  {/* פעולות מסלול: Hook עתידי לצפייה/התחלת רכיבה אמיתית */}
+                  {/* פעולות מסלול: מעבר לפרטים או התחלת רכיבה (Placeholder) */}
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <Button variant="primary" size="md">
+                    <Button variant="primary" size="md" onClick={() => setSelectedRoute(route)}>
                       צפה
                     </Button>
                     <Button variant="ghost" size="md">
@@ -221,13 +239,86 @@ function App() {
             </GlassCard>
           ))}
         </section>
+
+        {/*
+          תצוגת פרטי מסלול.
+          מוצגת רק לאחר בחירה של Route מתוך הרשימה.
+        */}
+        <section
+          className={[
+            "mt-6 transition-all duration-300 ease-out",
+            selectedRoute
+              ? "translate-y-0 opacity-100"
+              : "pointer-events-none h-0 -translate-y-2 overflow-hidden opacity-0",
+          ].join(" ")}
+        >
+          {selectedRoute && (
+            <div className="space-y-4">
+              <button
+                type="button"
+                className="mv-pill inline-flex items-center gap-2 px-3 py-1.5 text-sm text-slate-200 hover:text-white"
+                onClick={() => setSelectedRoute(null)}
+              >
+                <span aria-hidden="true">←</span>
+                <span>חזרה למסלולים</span>
+              </button>
+
+              <div className="mv-card relative aspect-[16/7] overflow-hidden rounded-2xl border border-white/10">
+                <div className="absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.12)_1px,transparent_1px)] bg-size-[26px_26px]" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_20%,rgba(20,184,166,0.22),transparent_60%)]" />
+                <svg
+                  viewBox="0 0 100 40"
+                  className="absolute inset-0 h-full w-full"
+                  preserveAspectRatio="none"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M6,30 C20,8 28,36 42,20 C55,8 66,28 78,18 C86,12 92,16 96,10"
+                    fill="none"
+                    stroke="rgba(52,211,153,0.9)"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </div>
+
+              <GlassCard title={selectedRoute.title}>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 gap-2 text-sm text-slate-300 sm:grid-cols-3">
+                    <p>מרחק: {selectedRoute.distanceKm} ק״מ</p>
+                    <p>זמן משוער: {selectedRoute.etaMin} דק׳</p>
+                    <p>קושי: בינוני</p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {selectedRoute.tags.map((tag) => (
+                      <span
+                        key={`detail-${selectedRoute.id}-${tag}`}
+                        className="mv-pill px-2.5 py-1 text-xs text-slate-200"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="primary" size="md">
+                      התחל רכיבה
+                    </Button>
+                    <Button variant="ghost" size="md" disabled>
+                      מחק מסלול
+                    </Button>
+                  </div>
+                </div>
+              </GlassCard>
+            </div>
+          )}
+        </section>
       </main>
 
       {/* FAB ליצירת מסלול (UI בלבד, ללא פעולה כרגע) */}
       <div className="pointer-events-none fixed bottom-24 left-4 z-30 flex items-center gap-2 md:bottom-8 md:left-6">
-        <span className="mv-pill px-3 py-1 text-xs text-slate-200">
-          צור מסלול
-        </span>
+        <span className="mv-pill px-3 py-1 text-xs text-slate-200">צור מסלול</span>
         <button
           type="button"
           className="pointer-events-auto mv-card inline-flex h-12 w-12 items-center justify-center rounded-full text-2xl text-emerald-200 shadow-[0_0_24px_rgba(20,184,166,0.35)]"
