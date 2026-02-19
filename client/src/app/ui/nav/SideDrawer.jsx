@@ -12,13 +12,14 @@
 function SideDrawer({ open, items, activeTab, onTabChange, onClose }) {
   return (
     <>
-      {/* שכבת רקע כהה לסגירה בלחיצה מחוץ למגירה */}
+      {/* שכבת overlay כהה לסגירה בלחיצה מחוץ למגירה */}
       <div
         className={[
           "fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity",
           open ? "opacity-100" : "pointer-events-none opacity-0",
         ].join(" ")}
         onClick={onClose}
+        /* נגישות: ה־overlay אינו תוכן אינטראקטיבי בפני עצמו */
         aria-hidden="true"
       />
 
@@ -28,6 +29,7 @@ function SideDrawer({ open, items, activeTab, onTabChange, onClose }) {
           "fixed inset-y-0 right-0 z-50 w-80 max-w-[86vw] transform transition-transform duration-300",
           open ? "translate-x-0" : "translate-x-full",
         ].join(" ")}
+        /* נגישות: מסמן לקוראי מסך אם המגירה מוסתרת */
         aria-hidden={!open}
       >
         <div className="flex h-full flex-col border-l border-white/10 bg-slate-950/95 p-4 text-white backdrop-blur-xl">
@@ -51,6 +53,7 @@ function SideDrawer({ open, items, activeTab, onTabChange, onClose }) {
                 const isActive = item.key === activeTab;
                 return (
                   <li key={item.key}>
+                    {/* נגישות: שמירה על מבנה כפתורים ברור לכל יעד ניווט */}
                     <button
                       type="button"
                       onClick={() => onTabChange(item.key)}

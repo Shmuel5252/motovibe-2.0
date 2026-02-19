@@ -10,6 +10,7 @@
  */
 function TopNav({ items, activeTab, onTabChange, onMenuClick }) {
   return (
+    /* בלוק top bar עליון קבוע עם שקיפות/blur עדינה */
     <header className="sticky top-0 z-30 px-4 pt-4 sm:px-6">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2 backdrop-blur-xl">
         {/* כפתור המבורגר מוצג רק במובייל */}
@@ -34,6 +35,7 @@ function TopNav({ items, activeTab, onTabChange, onMenuClick }) {
               const isActive = item.key === activeTab;
               return (
                 <li key={item.key}>
+                  {/* נגישות: aria-current מסמן לל״ק את הטאב הפעיל */}
                   <button
                     type="button"
                     onClick={() => onTabChange(item.key)}
