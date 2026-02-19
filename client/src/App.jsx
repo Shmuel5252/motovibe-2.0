@@ -1,7 +1,59 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import {
+  DirectionsRenderer,
+  GoogleMap,
+  MarkerF,
+  PolylineF,
+  useJsApiLoader,
+} from "@react-google-maps/api";
 import Button from "./app/ui/components/Button";
 import GlassCard from "./app/ui/components/GlassCard";
 import AppShell from "./app/layouts/AppShell";
+
+const ISRAEL_DEFAULT_CENTER = { lat: 32.0853, lng: 34.7818 };
+const ISRAEL_DEFAULT_ZOOM = 11;
+
+/**
+ * שכבת מפה לרכיבה פעילה כאשר קיים מפתח Google Maps.
+ * @param {Object} props - מאפייני המפה.
+ * @param {{lat: number, lng: number}} props.center - מרכז המפה הנוכחי.
+ * @param {{lat: number, lng: number} | null} props.myLocation - מיקום המשתמש למרקר.
+ * @param {string} props.apiKey - מפתח Google Maps מהסביבה.
+ * @returns {JSX.Element} מפת Google עם מרקר אופציונלי.
+ */
+function RideActiveMap({ center, myLocation, apiKey }) {
+  const { isLoaded: isMapLoaded } = useJsApiLoader({
+    id: "motovibe-ride-map",
+    googleMapsApiKey: apiKey,
+  });
+
+  if (!isMapLoaded) {
+    return (
+      <div className="flex h-full items-center justify-center bg-slate-900/60 text-sm text-slate-200">
+        טוען מפה...
+      </div>
+    );
+  }
+
+  return (
+    <GoogleMap
+      center={center}
+      zoom={ISRAEL_DEFAULT_ZOOM}
+      mapContainerClassName="h-full w-full"
+      options={{
+        disableDefaultUI: true,
+        zoomControl: true,
+        streetViewControl: false,
+        fullscreenControl: false,
+        mapTypeControl: false,
+        gestureHandling: "greedy",
+      }}
+    >
+      {/* מרקר "המיקום שלי" מוצג רק לאחר הצלחת GPS. */}
+      {myLocation && <MarkerF position={myLocation} title="המיקום שלי" />}
+    </GoogleMap>
+  );
+}
 
 /**
  * מסך האפליקציה הראשי.
@@ -39,6 +91,40 @@ function App() {
   const [routesSearchQuery, setRoutesSearchQuery] = useState("");
   const [selectedRoutesFilter, setSelectedRoutesFilter] = useState("הכל");
   const [isRoutesFilterMenuOpen, setIsRoutesFilterMenuOpen] = useState(false);
+
+  /* תצוגה פנימית למסך Routes: רשימה או פרטי מסלול. */
+  const [routesView, setRoutesView] = useState("routes");
+
+  const goToRoutesListView = () => setRoutesView("routes");
+
+  useEffect(() => {
+    if (routesView !== "routeDetails") {
+      return undefined;
+    }
+
+    /* תיקון ניווט: לחיצה על "מסלולים" בניווט מחזירה תמיד לרשימת המסלולים. */
+    const handleRoutesNavClick = (event) => {
+      const targetElement = event.target;
+      if (!(targetElement instanceof Element)) {
+        return;
+      }
+
+      const clickedButton = targetElement.closest("button");
+      if (!clickedButton) {
+        return;
+      }
+
+      if (clickedButton.textContent?.includes("מסלולים")) {
+        goToRoutesListView();
+      }
+    };
+
+    document.addEventListener("click", handleRoutesNavClick, true);
+
+    return () => {
+      document.removeEventListener("click", handleRoutesNavClick, true);
+    };
+  }, [routesView]);
 
   /*
    * תצוגה מקומית של תמונת האופנוע שנבחרה (ללא העלאה לשרת בשלב זה).
@@ -139,6 +225,259 @@ function App() {
   };
 
   /**
+   * מחזיר נתיב למסלול עבור Polyline במפת פרטי מסלול.
+   * אם אין נקודות במסלול, מוחזר נתיב דמו קצר באזור תל אביב.
+   * @param {{points?: Array<{lat: number, lng: number}>} | null} route - אובייקט מסלול נבחר.
+   * @returns {Array<{lat: number, lng: number}>} מערך נקודות חוקי ל-Polyline.
+   */
+  const getRoutePolylinePath = (route) => {
+    if (route?.points?.length >= 2) {
+      return route.points;
+    }
+
+    return [
+      { lat: 32.0853, lng: 34.7818 },
+      { lat: 32.0951, lng: 34.7894 },
+      { lat: 32.1063, lng: 34.8012 },
+      { lat: 32.1148, lng: 34.8155 },
+      { lat: 32.1222, lng: 34.8291 },
+    ];
+  };
+
+  /**
+   * בודק שנקודת מפה תקינה לציור על מפה.
+   * @param {unknown} point - אובייקט נקודה לבדיקה.
+   * @returns {point is {lat: number, lng: number}} האם הנקודה חוקית.
+   */
+  const isValidMapPoint = (point) => {
+    if (!point || typeof point !== "object") {
+      return false;
+    }
+
+    const lat = Number(point.lat);
+    const lng = Number(point.lng);
+    return Number.isFinite(lat) && Number.isFinite(lng);
+  };
+
+  /**
+   * מסנן נתיב למסלול לנקודות חוקיות בלבד עבור Polyline.
+   * @param {unknown} path - נתיב נכנס ממקור נתונים.
+   * @returns {Array<{lat: number, lng: number}>} נתיב בטוח להצגה.
+   */
+  const getSafePolylinePath = (path) => {
+    if (!Array.isArray(path)) {
+      return [];
+    }
+
+    return path.filter(isValidMapPoint);
+  };
+
+  /**
+   * מפה למסך פרטי מסלול עם קו מסלול (Polyline).
+   * @param {Object} props - מאפייני המפה.
+   * @param {string} props.apiKey - מפתח Google Maps מהסביבה.
+   * @param {Array<{lat: number, lng: number}>} props.path - נקודות הקו להצגה.
+   * @param {() => void} props.onBack - חזרה למסך המסלולים במקרה fallback.
+   * @returns {JSX.Element} תכולת מפה עם קו מסלול.
+   */
+  function RouteDetailsMap({ apiKey, path, onBack }) {
+    const [mapInstance, setMapInstance] = useState(null);
+    const [directionsResult, setDirectionsResult] = useState(null);
+    const [directionsStatus, setDirectionsStatus] = useState("ממתין...");
+    const [directionsErrorMessage, setDirectionsErrorMessage] = useState("");
+
+    const normalizedApiKey = apiKey?.trim() ?? "";
+
+    const { isLoaded: isMapLoaded, loadError } = useJsApiLoader({
+      id: "motovibe-route-details-map",
+      googleMapsApiKey: normalizedApiKey,
+    });
+
+    /* בטיחות Polyline: אם הנתיב לא תקין, לא מציירים קו. */
+    const safePath = getSafePolylinePath(path);
+    const startPoint = safePath[0] ?? null;
+    const endPoint = safePath.length > 1 ? safePath[safePath.length - 1] : null;
+
+    /* דיבוג Directions: בקשת מסלול אמיתי בין נקודות התחלה/סיום. */
+    useEffect(() => {
+      if (!normalizedApiKey || !isMapLoaded || !window.google || !mapInstance) {
+        return;
+      }
+
+      if (!startPoint || !endPoint) {
+        setDirectionsResult(null);
+        setDirectionsStatus("אין נתונים");
+        setDirectionsErrorMessage("אין נתוני מסלול להצגה");
+        return;
+      }
+
+      const origin = { lat: Number(startPoint.lat), lng: Number(startPoint.lng) };
+      const destination = { lat: Number(endPoint.lat), lng: Number(endPoint.lng) };
+      const travelMode = window.google.maps.TravelMode.DRIVING;
+
+      const request = { origin, destination, travelMode };
+      console.log("Directions request", {
+        origin,
+        destination,
+        travelMode: "DRIVING",
+      });
+
+      try {
+        const service = new window.google.maps.DirectionsService();
+        service.route(request, (result, status) => {
+          console.log("Directions callback", { status, result });
+
+          if (status === "OK" && result) {
+            setDirectionsResult(result);
+            setDirectionsStatus("OK");
+            setDirectionsErrorMessage("");
+            return;
+          }
+
+          setDirectionsResult(null);
+          setDirectionsStatus(String(status ?? "UNKNOWN_ERROR"));
+          setDirectionsErrorMessage(
+            result?.error_message || result?.status_message || "לא התקבלה תגובה תקינה",
+          );
+        });
+      } catch {
+        setDirectionsResult(null);
+        setDirectionsStatus("EXCEPTION");
+        setDirectionsErrorMessage("שגיאה פנימית בהפעלת Directions");
+      }
+    }, [normalizedApiKey, isMapLoaded, mapInstance, startPoint, endPoint]);
+
+    /* התאמת viewport לנקודות ידועות באופן בטוח בלבד. */
+    useEffect(() => {
+      if (
+        !normalizedApiKey ||
+        !isMapLoaded ||
+        !window.google ||
+        !mapInstance ||
+        safePath.length < 2
+      ) {
+        return;
+      }
+
+      try {
+        const bounds = new window.google.maps.LatLngBounds();
+        safePath.forEach((point) => bounds.extend(point));
+        mapInstance.fitBounds(bounds);
+      } catch {
+        /* no-op: לא מפילים UI במקרה ש-fitBounds נכשל. */
+      }
+    }, [normalizedApiKey, isMapLoaded, mapInstance, safePath]);
+
+    /* fallback למפתח חסר: משאירים UI שמיש וחזרה מהירה לרשימה. */
+    if (!normalizedApiKey) {
+      return (
+        <GlassCard className="h-full" title="מפת מסלול">
+          <p className="text-sm text-slate-200">חסר מפתח Google Maps</p>
+          <div className="mt-4">
+            <Button variant="ghost" size="md" onClick={onBack}>
+              חזרה למסלולים
+            </Button>
+          </div>
+        </GlassCard>
+      );
+    }
+
+    /* fallback לשגיאת טעינת סקריפט מפה. */
+    if (loadError) {
+      return (
+        <GlassCard className="h-full" title="מפת מסלול">
+          <p className="text-sm text-slate-200">שגיאה בטעינת המפה</p>
+          <div className="mt-4">
+            <Button variant="ghost" size="md" onClick={onBack}>
+              חזרה למסלולים
+            </Button>
+          </div>
+        </GlassCard>
+      );
+    }
+
+    /* מצב טעינה מקומי במקום מסך שחור/ריק. */
+    if (!isMapLoaded) {
+      return (
+        <div className="flex h-full items-center justify-center bg-slate-900/60 text-sm text-slate-200">
+          טוען מפה...
+        </div>
+      );
+    }
+
+
+    return (
+      <div className="w-full">
+        <div className="relative h-[420px] w-full sm:h-[520px]">
+          <GoogleMap
+            center={ISRAEL_DEFAULT_CENTER}
+            zoom={ISRAEL_DEFAULT_ZOOM}
+            onLoad={(map) => setMapInstance(map)}
+            mapContainerClassName="h-full w-full"
+            options={{
+              disableDefaultUI: true,
+              zoomControl: true,
+              streetViewControl: false,
+              fullscreenControl: false,
+              mapTypeControl: false,
+              gestureHandling: "greedy",
+            }}
+          >
+            {/* ציור מסלול: קודם Directions (אם הצליח), אחרת Polyline מקומי. */}
+            {directionsResult ? (
+              <DirectionsRenderer
+                directions={directionsResult}
+                options={{
+                  suppressMarkers: false,
+                  polylineOptions: {
+                    strokeColor: "#14b8a6",
+                    strokeOpacity: 0.95,
+                    strokeWeight: 5,
+                  },
+                }}
+              />
+            ) : (
+              safePath.length >= 2 && (
+                <PolylineF
+                  path={safePath}
+                  options={{
+                    strokeColor: "#14b8a6",
+                    strokeOpacity: 0.95,
+                    strokeWeight: 5,
+                  }}
+                />
+              )
+            )}
+
+            {/* תמיד ניתן להציג נקודת התחלה/סיום גם ללא קו מלא. */}
+            {startPoint && <MarkerF position={startPoint} title="התחלה" />}
+            {endPoint && <MarkerF position={endPoint} title="סיום" />}
+          </GoogleMap>
+
+          {/* מצב מידע כשאין נתוני מסלול תקינים להצגת קו. */}
+          {safePath.length < 2 && (
+            <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-xs text-slate-200">
+              אין נתוני מסלול להצגה
+            </div>
+          )}
+        </div>
+
+        {/* סטטוס דיבוג Directions: תוצאה ופרטי שגיאה לשקיפות מלאה. */}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="mv-pill px-3 py-1 text-xs text-slate-200">
+            Directions: {directionsStatus}
+          </span>
+          {directionsStatus !== "OK" && directionsErrorMessage && (
+            <span className="mv-pill px-3 py-1 text-xs text-amber-200">
+              שגיאה: {directionsErrorMessage}
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  /**
    * באנר רכיבה פעילה לטאבים שאינם רכיבה.
    * @param {Object} params - מאפייני הבאנר.
    * @param {boolean} params.isRideActive - האם רכיבה פעילה כרגע.
@@ -185,6 +524,47 @@ function App() {
     onMinimize,
     onFinish,
   }) {
+    /* אתחול מפה: מרכז ברירת מחדל בישראל וזום ראשוני. */
+    const [mapCenter, setMapCenter] = useState(ISRAEL_DEFAULT_CENTER);
+
+    /* מרקר מיקום משתמש יוצג רק אם GPS חזר בהצלחה. */
+    const [myLocation, setMyLocation] = useState(null);
+
+    /* סטטוס GPS במקרה של דחייה/חוסר תמיכה. */
+    const [isGpsUnavailable, setIsGpsUnavailable] = useState(false);
+
+    const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+    /* אם אין מפתח — לא טוענים Google Maps ומציגים הודעת fallback בעברית. */
+    const hasGoogleMapsApiKey = Boolean(googleMapsApiKey);
+
+    /* GPS חד־פעמי: ניסיון יחיד לקבלת מיקום נוכחי בזמן mount. */
+    useEffect(() => {
+      if (!navigator.geolocation) {
+        setIsGpsUnavailable(true);
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const nextPosition = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          setMapCenter(nextPosition);
+          setMyLocation(nextPosition);
+          setIsGpsUnavailable(false);
+        },
+        () => {
+          setIsGpsUnavailable(true);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        },
+      );
+    }, []);
+
     const hours = String(Math.floor(rideElapsedSeconds / 3600)).padStart(
       2,
       "0",
@@ -230,6 +610,34 @@ function App() {
                   {selectedRoute.from} → {selectedRoute.to}
                 </p>
               )}
+            </div>
+          </div>
+
+          {/* UI מפה: כרטיס ייעודי תחת הטיימר עם תמיכת fallback למפתח חסר. */}
+          <div className="mx-auto mt-6 w-full max-w-4xl">
+            <div className="mv-card overflow-hidden rounded-2xl border border-white/10">
+              <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">
+                <span className="text-xs text-slate-200">מפת רכיבה</span>
+                {isGpsUnavailable && (
+                  <span className="mv-pill px-2.5 py-1 text-xs text-amber-200">
+                    GPS: לא זמין
+                  </span>
+                )}
+              </div>
+
+              <div className="relative h-56 sm:h-64 md:h-72">
+                {!hasGoogleMapsApiKey ? (
+                  <div className="flex h-full items-center justify-center bg-slate-900/60 px-4 text-sm text-slate-200">
+                    חסר מפתח Google Maps
+                  </div>
+                ) : (
+                  <RideActiveMap
+                    center={mapCenter}
+                    myLocation={myLocation}
+                    apiKey={googleMapsApiKey}
+                  />
+                )}
+              </div>
             </div>
           </div>
 
@@ -423,10 +831,15 @@ function App() {
     setDidStartFromRoute,
     onNavigate,
   }) => {
+    /* מפתח Google Maps קיים כבר בפרויקט; ללא מפתח מוצג fallback ברור. */
+    const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+
     /* סינון מקומי בסיסי למסלולים לפי חיפוש וכרטיסיית טווח. */
     const normalizedSearch = routesSearchQuery.trim().toLowerCase();
     const visibleRoutes = routes.filter((route) => {
-      const matchesSearch = route.title.toLowerCase().includes(normalizedSearch);
+      const matchesSearch = route.title
+        .toLowerCase()
+        .includes(normalizedSearch);
       const matchesFilter =
         selectedRoutesFilter === "הכל" ||
         getRouteLengthCategory(route.distanceKm) === selectedRoutesFilter;
@@ -436,15 +849,71 @@ function App() {
 
     const closeRoutesDropdown = () => setIsRoutesFilterMenuOpen(false);
 
+    /* נתיב קו להצגה במסך פרטי מסלול. */
+    const routePath = getRoutePolylinePath(selectedRoute);
+
+    if (routesView === "routeDetails" && selectedRoute) {
+      return (
+        <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 pb-10 pt-5 sm:px-6">
+          <main className="mt-6 flex-1">
+            {renderActiveRideBanner({
+              isRideActive,
+              isRideMinimized,
+              onNavigate,
+            })}
+
+            {/* כותרת פרטי מסלול + פרטי מקור/יעד */}
+            <section>
+              <h1 className="text-3xl font-bold leading-tight sm:text-4xl">
+                פרטי מסלול
+              </h1>
+              <p className="mt-2 text-base text-slate-300 sm:text-lg">
+                {selectedRoute.title}
+              </p>
+              <p className="mt-1 text-sm text-slate-400">
+                {selectedRoute.from} → {selectedRoute.to}
+              </p>
+            </section>
+
+            {/* כרטיס מפה גדול עם Polyline או הודעת fallback ללא מפתח */}
+            <section className="mt-6">
+              <div className="mv-card overflow-hidden rounded-2xl border border-white/10">
+                <RouteDetailsMap
+                  apiKey={googleMapsApiKey}
+                  path={routePath}
+                  onBack={goToRoutesListView}
+                />
+              </div>
+            </section>
+
+            {/* חזרה לרשימת המסלולים ללא שינוי המסלול הנבחר */}
+            <section className="mt-4">
+              <Button variant="ghost" size="md" onClick={goToRoutesListView}>
+                חזרה למסלולים
+              </Button>
+            </section>
+          </main>
+        </div>
+      );
+    }
+
     return (
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 pb-10 pt-5 sm:px-6">
         <main className="mt-6 flex-1">
-          {renderActiveRideBanner({ isRideActive, isRideMinimized, onNavigate })}
+          {renderActiveRideBanner({
+            isRideActive,
+            isRideMinimized,
+            onNavigate,
+          })}
 
           {/* כותרת מסך מסלולים */}
           <section>
-            <h1 className="text-3xl font-bold leading-tight sm:text-4xl">מסלולים</h1>
-            <p className="mt-2 text-base text-slate-300 sm:text-lg">בחר מסלול וצא לרכיבה</p>
+            <h1 className="text-3xl font-bold leading-tight sm:text-4xl">
+              מסלולים
+            </h1>
+            <p className="mt-2 text-base text-slate-300 sm:text-lg">
+              בחר מסלול וצא לרכיבה
+            </p>
 
             {/* שורת חיפוש + סינון בסגנון History */}
             <div className="mt-4 flex items-center gap-2">
@@ -495,7 +964,8 @@ function App() {
                       aria-label="סגור סינון"
                     />
 
-                    <div className="absolute z-50 top-full mt-2 left-0 sm:left-auto sm:right-0 w-44 max-w-[calc(100vw-24px)] rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md shadow-lg p-2">
+                    {/* עוגנים לשמאל כדי למנוע חיתוך בחלון צר */}
+                    <div className="absolute z-50 top-full mt-2 left-0 right-auto w-44 max-w-[calc(100vw-24px)] rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md shadow-lg p-2">
                       {routesFilterOptions.map((filter) => {
                         const isSelected = selectedRoutesFilter === filter;
                         return (
@@ -535,7 +1005,9 @@ function App() {
                   </div>
 
                   <div>
-                    <h3 className="text-base font-semibold text-slate-100">{route.title}</h3>
+                    <h3 className="text-base font-semibold text-slate-100">
+                      {route.title}
+                    </h3>
                     <p className="mt-1 text-sm text-slate-400">
                       {route.from} → {route.to}
                     </p>
@@ -545,7 +1017,17 @@ function App() {
 
                     {/* פעולות מסלול: תצוגה או התחלה ישירה למסך רכיבה */}
                     <div className="mt-4 flex flex-wrap gap-2">
-                      <Button variant="ghost" size="md">צפה</Button>
+                      <Button
+                        variant="ghost"
+                        size="md"
+                        onClick={() => {
+                          /* מעבר פנימי לפרטי מסלול מתוך רשימת המסלולים. */
+                          setSelectedRoute(route);
+                          setRoutesView("routeDetails");
+                        }}
+                      >
+                        צפה
+                      </Button>
                       <Button
                         variant="primary"
                         size="md"
@@ -583,9 +1065,9 @@ function App() {
    * @param {(value: boolean) => void} params.setIsRideActive - עדכון מצב רכיבה פעילה.
    * @param {(value: boolean) => void} params.setIsRidePaused - עדכון מצב השהיה.
    * @param {(value: boolean) => void} params.setIsRideMinimized - עדכון מצב מזעור HUD.
-  * @param {{title: string, from: string, to: string} | null} params.selectedRoute - מסלול שנבחר ממסך Routes.
-  * @param {boolean} params.didStartFromRoute - האם ההתחלה למסך Ride הגיעה ממסך מסלולים.
-  * @param {(value: boolean) => void} params.setDidStartFromRoute - עדכון כלל תצוגת מסלול ב־Ride.
+   * @param {{title: string, from: string, to: string} | null} params.selectedRoute - מסלול שנבחר ממסך Routes.
+   * @param {boolean} params.didStartFromRoute - האם ההתחלה למסך Ride הגיעה ממסך מסלולים.
+   * @param {(value: boolean) => void} params.setDidStartFromRoute - עדכון כלל תצוגת מסלול ב־Ride.
    * @param {(tabKey: "home" | "routes" | "ride" | "history" | "bike") => void} params.onNavigate - ניווט בין טאבים.
    * @returns {JSX.Element} מסך ride בהתאם למצב הפעילות.
    */
@@ -603,7 +1085,8 @@ function App() {
     onNavigate,
   }) => {
     /* מציגים מסלול רק אם המשתמש התחיל רכיבה מתוך מסך Routes. */
-    const rideSelectedRoute = didStartFromRoute && selectedRoute ? selectedRoute : null;
+    const rideSelectedRoute =
+      didStartFromRoute && selectedRoute ? selectedRoute : null;
 
     if (isRideActive && !isRideMinimized) {
       return (
@@ -634,93 +1117,94 @@ function App() {
         {/* נדרש Fragment כדי שהערה ו־div יהיו תחת הורה JSX יחיד */}
         {/* overflow-x-hidden מונע גלילה אופקית/חיתוך כאשר הדרופדאון קרוב לקצה המסך */}
         <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col overflow-x-hidden px-4 pb-10 pt-5 sm:px-6">
-        <main className="mt-6 flex flex-1 items-center justify-center">
-          {/* מסך מוכנות לרכיבה לפני כניסה ל־HUD */}
-          <GlassCard
-            className="w-full max-w-xl text-center"
-            title="מוכן לרכיבה?"
-          >
-            <p className="text-sm text-slate-300">
-              הפעל מצב רכיבה פעילה לממשק מלא ללא ניווט.
-            </p>
-
-            {/* אינדיקציה למסלול שנבחר ממסך המסלולים */}
-            <div className="mt-4 rounded-xl border border-white/10 bg-slate-900/40 px-3 py-2 text-sm">
-              <p className="text-slate-200">
-                מסלול נבחר: {rideSelectedRoute ? rideSelectedRoute.title : "ללא"}
-              </p>
-              {rideSelectedRoute && (
-                <p className="mt-1 text-xs text-slate-400">
-                  {rideSelectedRoute.from} → {rideSelectedRoute.to}
-                </p>
-              )}
-            </div>
-
-            {/* שורת סטטוס קצרה לפני יציאה לרכיבה */}
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-              <span className="mv-pill px-3 py-1 text-xs font-medium text-emerald-200">
-                GPS: מוכן
-              </span>
-              <span className="mv-pill px-3 py-1 text-xs text-slate-200">
-                דיוק משוער: גבוה
-              </span>
-            </div>
-
-            {/* בחירת מסלול אופציונלית: שני קונטרולים מאותה משפחת עיצוב (pill/glass) */}
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-900/40 px-3 py-2 text-sm">
-              <span className="text-slate-300">מסלול</span>
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                {/* ניקוי מסלול באופן מפורש מהמשתמש ושיקוף מצב נבחר ויזואלי */}
-                <Button
-                  variant="ghost"
-                  size="md"
-                  onClick={() => {
-                    /* בחירה מפורשת ב"ללא מסלול" מאפסת גם את כלל "התחיל ממסלולים". */
-                    setSelectedRoute(null);
-                    setDidStartFromRoute(false);
-                  }}
-                  className={[
-                    "rounded-full bg-white/5 border text-sm px-4 py-2 leading-none backdrop-blur whitespace-nowrap w-auto",
-                    !rideSelectedRoute
-                      ? "border-emerald-300/40 text-emerald-200"
-                      : "border-white/10 text-white/80 hover:text-white",
-                  ].join(" ")}
-                >
-                  ללא מסלול
-                </Button>
-
-                {/* מעבר יזום למסך מסלולים לבחירה, ללא בחירה אוטומטית */}
-                <Button
-                  variant="ghost"
-                  size="md"
-                  className="rounded-full bg-white/5 border border-white/10 text-sm px-4 py-2 leading-none backdrop-blur whitespace-nowrap w-auto text-white/80 hover:text-white"
-                  onClick={() => onNavigate("routes")}
-                >
-                  בחר מסלול
-                </Button>
-              </div>
-            </div>
-
-            {/* הערת בטיחות לפני התחלת רכיבה */}
-            <p className="mt-4 text-xs text-slate-400">
-              טיפ: בדוק קסדה ואורות לפני יציאה
-            </p>
-
-            <Button
-              variant="primary"
-              size="lg"
-              className="mt-6 w-full"
-              onClick={() => {
-                /* כניסה לרכיבה פעילה תמיד מתחילה במצב לא מושהה. */
-                setIsRidePaused(false);
-                setIsRideMinimized(false);
-                setIsRideActive(true);
-              }}
+          <main className="mt-6 flex flex-1 items-center justify-center">
+            {/* מסך מוכנות לרכיבה לפני כניסה ל־HUD */}
+            <GlassCard
+              className="w-full max-w-xl text-center"
+              title="מוכן לרכיבה?"
             >
-              התחל רכיבה
-            </Button>
-          </GlassCard>
-        </main>
+              <p className="text-sm text-slate-300">
+                הפעל מצב רכיבה פעילה לממשק מלא ללא ניווט.
+              </p>
+
+              {/* אינדיקציה למסלול שנבחר ממסך המסלולים */}
+              <div className="mt-4 rounded-xl border border-white/10 bg-slate-900/40 px-3 py-2 text-sm">
+                <p className="text-slate-200">
+                  מסלול נבחר:{" "}
+                  {rideSelectedRoute ? rideSelectedRoute.title : "ללא"}
+                </p>
+                {rideSelectedRoute && (
+                  <p className="mt-1 text-xs text-slate-400">
+                    {rideSelectedRoute.from} → {rideSelectedRoute.to}
+                  </p>
+                )}
+              </div>
+
+              {/* שורת סטטוס קצרה לפני יציאה לרכיבה */}
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                <span className="mv-pill px-3 py-1 text-xs font-medium text-emerald-200">
+                  GPS: מוכן
+                </span>
+                <span className="mv-pill px-3 py-1 text-xs text-slate-200">
+                  דיוק משוער: גבוה
+                </span>
+              </div>
+
+              {/* בחירת מסלול אופציונלית: שני קונטרולים מאותה משפחת עיצוב (pill/glass) */}
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-900/40 px-3 py-2 text-sm">
+                <span className="text-slate-300">מסלול</span>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  {/* ניקוי מסלול באופן מפורש מהמשתמש ושיקוף מצב נבחר ויזואלי */}
+                  <Button
+                    variant="ghost"
+                    size="md"
+                    onClick={() => {
+                      /* בחירה מפורשת ב"ללא מסלול" מאפסת גם את כלל "התחיל ממסלולים". */
+                      setSelectedRoute(null);
+                      setDidStartFromRoute(false);
+                    }}
+                    className={[
+                      "rounded-full bg-white/5 border text-sm px-4 py-2 leading-none backdrop-blur whitespace-nowrap w-auto",
+                      !rideSelectedRoute
+                        ? "border-emerald-300/40 text-emerald-200"
+                        : "border-white/10 text-white/80 hover:text-white",
+                    ].join(" ")}
+                  >
+                    ללא מסלול
+                  </Button>
+
+                  {/* מעבר יזום למסך מסלולים לבחירה, ללא בחירה אוטומטית */}
+                  <Button
+                    variant="ghost"
+                    size="md"
+                    className="rounded-full bg-white/5 border border-white/10 text-sm px-4 py-2 leading-none backdrop-blur whitespace-nowrap w-auto text-white/80 hover:text-white"
+                    onClick={() => onNavigate("routes")}
+                  >
+                    בחר מסלול
+                  </Button>
+                </div>
+              </div>
+
+              {/* הערת בטיחות לפני התחלת רכיבה */}
+              <p className="mt-4 text-xs text-slate-400">
+                טיפ: בדוק קסדה ואורות לפני יציאה
+              </p>
+
+              <Button
+                variant="primary"
+                size="lg"
+                className="mt-6 w-full"
+                onClick={() => {
+                  /* כניסה לרכיבה פעילה תמיד מתחילה במצב לא מושהה. */
+                  setIsRidePaused(false);
+                  setIsRideMinimized(false);
+                  setIsRideActive(true);
+                }}
+              >
+                התחל רכיבה
+              </Button>
+            </GlassCard>
+          </main>
         </div>
       </>
     );
