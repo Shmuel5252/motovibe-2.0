@@ -1,0 +1,18 @@
+/* טעינת Tailwind וטוקני התמה של הפרויקט. */
+@import "tailwindcss";
+@import "./theme.css";
+
+/* שמירת RTL כאשר מוגדר על תגית html. */
+html[dir="rtl"] {
+  direction: rtl;
+}
+
+/* ברירות מחדל גלובליות למסך מלא, צבעי בסיס והחלקת פונטים. */
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--mv-bg);
+  color: var(--mv-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

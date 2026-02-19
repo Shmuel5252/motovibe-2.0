@@ -1,0 +1,57 @@
+/*
+  טוקני עיצוב גלובליים של MotoVibe (צבעים, רדיוסים, וטשטוש).
+  כל הקלאסים בהמשך נשענים על המשתנים כאן כדי לשמור עקביות עיצובית.
+*/
+:root {
+  --mv-bg: #020617;
+  --mv-surface: rgba(255, 255, 255, 0.05);
+  --mv-border: rgba(255, 255, 255, 0.1);
+  --mv-text: #f8fafc;
+  --mv-muted: #94a3b8;
+  --mv-accent: #14b8a6;
+  --mv-accent-2: #22c55e;
+  --mv-radius-xl: 0.75rem;
+  --mv-radius-2xl: 1rem;
+  --mv-blur: 20px;
+}
+
+/* רקע קולנועי כהה עם זוהר עדין מלמעלה-ימין. */
+.mv-bg {
+  min-height: 100vh;
+  background-color: var(--mv-bg);
+  background-image: radial-gradient(
+    circle at top right,
+    color-mix(in oklab, var(--mv-accent) 30%, transparent),
+    color-mix(in oklab, var(--mv-bg) 80%, transparent) 42%,
+    var(--mv-bg) 78%
+  );
+  color: var(--mv-text);
+}
+
+/* מיכל Glassmorphism בסיסי לכל כרטיס/בלוק. */
+.mv-card {
+  border: 1px solid var(--mv-border);
+  background: var(--mv-surface);
+  border-radius: var(--mv-radius-2xl);
+  backdrop-filter: blur(var(--mv-blur));
+}
+
+/* כפתור ראשי עם גרדיאנט אקסנט וזוהר עדין. */
+.mv-btn-primary {
+  background: linear-gradient(90deg, var(--mv-accent-2), var(--mv-accent));
+  color: var(--mv-text);
+  box-shadow: 0 0 30px color-mix(in oklab, var(--mv-accent) 35%, transparent);
+  border: 1px solid color-mix(in oklab, var(--mv-accent) 30%, transparent);
+}
+
+.mv-btn-primary:hover {
+  filter: brightness(1.06);
+}
+
+/* גלולה קטנה למצב/סטטיסטיקה. */
+.mv-pill {
+  border: 1px solid var(--mv-border);
+  background: var(--mv-surface);
+  border-radius: 9999px;
+  backdrop-filter: blur(var(--mv-blur));
+}
