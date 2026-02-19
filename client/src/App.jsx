@@ -18,6 +18,17 @@ function App() {
   const [selectedRoute, setSelectedRoute] = useState(null);
 
   /*
+   * פילטר מקומי למסך היסטוריה (UI בלבד ללא סינון נתונים אמיתי בשלב זה).
+   */
+  const [selectedHistoryFilter, setSelectedHistoryFilter] = useState("הכל");
+  const [isHistoryFilterMenuOpen, setIsHistoryFilterMenuOpen] = useState(false);
+
+  /*
+   * טקסט חיפוש מקומי למסך היסטוריה (ללא API).
+   */
+  const [searchQuery, setSearchQuery] = useState("");
+
+  /*
    * Placeholder לנתוני מסלולים.
    * נקודת הרחבה עתידית: החלפה בנתונים מהשרת + חיפוש/פילטור אמיתי.
    */
@@ -52,6 +63,19 @@ function App() {
   ];
 
   const filterChips = ["הכל", "קצר", "בינוני", "ארוך", "שטח"];
+
+  const historyFilters = ["הכל", "שבוע", "חודש", "שנה"];
+
+  /*
+   * נתוני דמו למסך היסטוריית רכיבות.
+   * בהמשך יוחלפו בנתונים אמיתיים מהשרת.
+   */
+  const historyRides = [
+    { id: "ride-1", title: "טיול רכיבה ביום שבת", date: "03.12.25", duration: "1:45", distance: "72 ק״מ" },
+    { id: "ride-2", title: "נסיעה לעבודה", date: "28.11.25", duration: "0:55", distance: "21 ק״מ" },
+    { id: "ride-3", title: "טיול לילה בהרים", date: "21.11.25", duration: "2:10", distance: "94 ק״מ" },
+    { id: "ride-4", title: "סיבוב חוף ערב", date: "18.11.25", duration: "1:20", distance: "48 ק״מ" },
+  ];
 
   /**
    * באנר רכיבה פעילה לטאבים שאינם רכיבה.
@@ -632,6 +656,175 @@ function App() {
   };
 
   /**
+   * מסך History עם פילטרים, סטטיסטיקות ורשימת רכיבות אחרונות.
+   * @param {Object} params - מאפייני תצוגה למסך.
+   * @param {boolean} params.isRideActive - האם רכיבה פעילה כרגע.
+   * @param {boolean} params.isRideMinimized - האם רכיבה במצב מזעור.
+   * @param {(tabKey: "home" | "routes" | "ride" | "history" | "bike") => void} params.onNavigate - מעבר בין טאבים.
+   * @returns {JSX.Element} מסך היסטוריית רכיבות בתצוגת MotoVibe.
+   */
+  const renderHistoryScreen = ({ isRideActive, isRideMinimized, onNavigate }) => {
+    /* סינון מקומי פשוט לפי שם רכיבה (case-insensitive). */
+    const normalizedSearch = searchQuery.trim().toLowerCase();
+    const visibleHistoryRides = historyRides.filter((ride) =>
+      ride.title.toLowerCase().includes(normalizedSearch),
+    );
+
+    return (
+      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 pb-10 pt-5 sm:px-6">
+        <main className="mt-6 flex-1">
+          {renderActiveRideBanner({ isRideActive, isRideMinimized, onNavigate })}
+
+          {/* כותרת מסך + כלי חיפוש/סינון מקומיים */}
+          <section>
+            <h1 className="text-3xl font-bold leading-tight sm:text-4xl">היסטוריית רכיבות</h1>
+            <p className="mt-2 text-base text-slate-300 sm:text-lg">
+              כל הרכיבות האחרונות שלך במקום אחד
+            </p>
+
+            {/* שורת חיפוש + כפתור סינון קומפקטי */}
+            <div className="mt-4 flex items-center gap-2">
+              <div className="mv-card relative flex-1 p-2">
+                <span className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-sm text-slate-400">
+                  🔎
+                </span>
+                <input
+                  type="search"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="חפש רכיבה..."
+                  className="w-full rounded-xl border border-white/10 bg-slate-900/60 py-2 pe-3 ps-9 text-sm text-slate-100 placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+                />
+              </div>
+
+              {/* בקרת סינון יחידה: כפתור אייקון + תפריט נפתח */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsHistoryFilterMenuOpen((prev) => !prev)}
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 transition hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+                  aria-label="סינון"
+                  aria-expanded={isHistoryFilterMenuOpen}
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M4 6h16l-6.5 7.2v4.8l-3 1.8v-6.6L4 6Z"
+                      stroke="currentColor"
+                      strokeWidth="1.7"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+
+                {isHistoryFilterMenuOpen && (
+                  <div className="absolute right-0 top-full z-40 mt-2 w-40 rounded-2xl border border-white/10 bg-slate-900/85 p-2 shadow-[0_10px_35px_rgba(2,6,23,0.55)] backdrop-blur-md">
+                    {historyFilters.map((filter) => {
+                      const isSelected = selectedHistoryFilter === filter;
+                      return (
+                        <button
+                          key={`menu-${filter}`}
+                          type="button"
+                          onClick={() => {
+                            setSelectedHistoryFilter(filter);
+                            setIsHistoryFilterMenuOpen(false);
+                          }}
+                          className={[
+                            "mb-1 inline-flex w-full items-center justify-center rounded-xl border px-3 py-1.5 text-sm transition last:mb-0",
+                            isSelected
+                              ? "border-emerald-300/40 text-emerald-200"
+                              : "border-transparent text-slate-200 hover:border-white/10 hover:text-white",
+                          ].join(" ")}
+                        >
+                          {filter}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* שכבת סגירה בלחיצה מחוץ לתפריט הסינון */}
+            {isHistoryFilterMenuOpen && (
+              <button
+                type="button"
+                aria-label="סגור תפריט סינון"
+                className="fixed inset-0 z-30 cursor-default"
+                onClick={() => setIsHistoryFilterMenuOpen(false)}
+              />
+            )}
+
+            {/* סיכום מסנן נבחר (ללא שורת צ'יפים כפולה) */}
+            <div className="mt-3">
+              <span className="mv-pill px-3 py-1 text-xs text-slate-200">
+                טווח: {selectedHistoryFilter}
+              </span>
+            </div>
+          </section>
+
+          {/* פס סטטיסטיקות חדש: מספרים גדולים ומחיצות אנכיות עדינות */}
+          <section className="mv-card mt-6 px-4 py-3">
+            <div className="grid grid-cols-3 gap-0 text-center">
+              <div className="border-e border-white/10 px-2">
+                <p className="text-2xl font-semibold leading-none text-white">12</p>
+                <p className="mt-1 text-xs text-slate-400">רכיבות</p>
+              </div>
+              <div className="border-e border-white/10 px-2">
+                <p className="text-2xl font-semibold leading-none text-white">14:30</p>
+                <p className="mt-1 text-xs text-slate-400">שעות</p>
+              </div>
+              <div className="px-2">
+                <p className="text-2xl font-semibold leading-none text-white">615</p>
+                <p className="mt-1 text-xs text-slate-400">ק״מ</p>
+              </div>
+            </div>
+          </section>
+
+          {/* רשימת רכיבות אחרונות */}
+          <section className="mt-6 space-y-4">
+            {visibleHistoryRides.map((ride) => (
+            <GlassCard
+              key={ride.id}
+              right={
+                <Button variant="ghost" size="md" className="h-8 w-8 rounded-full p-0 text-base">
+                  &gt;
+                </Button>
+              }
+            >
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_130px] md:items-center">
+                <div>
+                  <h3 className="text-base font-semibold text-slate-100">{ride.title}</h3>
+                  <p className="mt-1 text-xs text-slate-400">{ride.date}</p>
+
+                  <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-300">
+                    <span>⏱️ {ride.duration}</span>
+                    <span>📍 {ride.distance}</span>
+                  </div>
+                </div>
+
+                <div className="h-24 overflow-hidden rounded-xl bg-linear-to-br from-slate-900/90 via-slate-800/65 to-emerald-900/30 ring-1 ring-white/10" />
+              </div>
+            </GlassCard>
+            ))}
+
+            {/*
+              מצב ריק עתידי:
+              כאשר historyRides יהיה מערך ריק, ניתן לרנדר כאן GlassCard עם הודעה
+              כמו "אין רכיבות להצגה" וכפתור CTA להתחלת רכיבה חדשה.
+            */}
+          </section>
+        </main>
+      </div>
+    );
+  };
+
+  /**
    * Placeholder למסכים שטרם מומשו.
    * @param {string} title - כותרת המסך.
    * @param {string} subtitle - תיאור קצר למסך.
@@ -715,11 +908,11 @@ function App() {
         }
 
         if (activeTab === "history") {
-          return renderPlaceholderScreen(
-            "היסטוריה",
-            "כאן יוצגו הרכיבות הקודמות שלך",
-            { isRideActive, isRideMinimized, onNavigate },
-          );
+          return renderHistoryScreen({
+            isRideActive,
+            isRideMinimized,
+            onNavigate,
+          });
         }
 
         return renderPlaceholderScreen(
