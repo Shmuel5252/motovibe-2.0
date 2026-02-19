@@ -4,24 +4,25 @@
  * @param {Object} props - מאפייני הקומפוננטה.
  * @param {Array<{key: string, label: string, icon: string}>} props.items - פריטי הניווט.
  * @param {string} props.activeTab - שם הלשונית הפעילה.
- * @param {(tabKey: string) => void} props.onTabChange - עדכון לשונית פעילה.
+ * @param {(tabKey: "home" | "routes" | "ride" | "history" | "bike") => void} props.onNavigate
+ * - עדכון הלשונית הפעילה במסך.
  * @returns {JSX.Element} סרגל ניווט תחתון למובייל בלבד.
  */
-function BottomNav({ items, activeTab, onTabChange }) {
+function BottomNav({ items, activeTab, onNavigate }) {
   return (
     /* פס ניווט תחתון קבוע המוצג רק מתחת ל־md */
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-slate-950/90 px-3 pb-3 pt-2 backdrop-blur-xl md:hidden">
       <ul className="mx-auto grid max-w-3xl grid-cols-5 gap-2">
         {items.map((item) => {
           const isActive = item.key === activeTab;
-          const isCenter = item.key === "רכיבה";
+          const isCenter = item.key === "ride";
 
           return (
             <li key={item.key}>
               {/* נגישות: aria-current מסמן את היעד הפעיל בניווט */}
               <button
                 type="button"
-                onClick={() => onTabChange(item.key)}
+                onClick={() => onNavigate(item.key)}
                 className={[
                   "w-full rounded-xl px-2 py-2 text-center text-xs transition",
                   isCenter

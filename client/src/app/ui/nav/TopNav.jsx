@@ -4,11 +4,12 @@
  * @param {Object} props - מאפייני הקומפוננטה.
  * @param {Array<{key: string, label: string, icon: string}>} props.items - פריטי ניווט.
  * @param {string} props.activeTab - הלשונית הפעילה.
- * @param {(tabKey: string) => void} props.onTabChange - עדכון לשונית פעילה.
+ * @param {(tabKey: "home" | "routes" | "ride" | "history" | "bike") => void} props.onNavigate
+ * - מעבר בין מסכים לפי מפתח לשונית.
  * @param {() => void} props.onMenuClick - פתיחת תפריט צד במובייל.
  * @returns {JSX.Element} כותרת עליונה עם ניווט מותאם מסך.
  */
-function TopNav({ items, activeTab, onTabChange, onMenuClick }) {
+function TopNav({ items, activeTab, onNavigate, onMenuClick }) {
   return (
     /* בלוק top bar עליון קבוע עם שקיפות/blur עדינה */
     <header className="sticky top-0 z-30 px-4 pt-4 sm:px-6">
@@ -38,7 +39,7 @@ function TopNav({ items, activeTab, onTabChange, onMenuClick }) {
                   {/* נגישות: aria-current מסמן לל״ק את הטאב הפעיל */}
                   <button
                     type="button"
-                    onClick={() => onTabChange(item.key)}
+                    onClick={() => onNavigate(item.key)}
                     className={[
                       "rounded-xl px-3 py-1.5 text-sm transition",
                       isActive

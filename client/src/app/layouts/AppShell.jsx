@@ -8,29 +8,30 @@ import TopNav from "../ui/nav/TopNav";
  * נשמרת כקונפיגורציה אחת כדי לשמור עקביות בין TopNav, BottomNav ו־SideDrawer.
  */
 const NAV_ITEMS = [
-  { key: "בית", label: "בית", icon: "⌂" },
-  { key: "מסלולים", label: "מסלולים", icon: "⌁" },
-  { key: "רכיבה", label: "רכיבה", icon: "●" },
-  { key: "היסטוריה", label: "היסטוריה", icon: "◷" },
-  { key: "האופנוע שלי", label: "האופנוע שלי", icon: "⚙" },
+  { key: "home", label: "בית", icon: "⌂" },
+  { key: "routes", label: "מסלולים", icon: "⌁" },
+  { key: "ride", label: "רכיבה", icon: "●" },
+  { key: "history", label: "היסטוריה", icon: "◷" },
+  { key: "bike", label: "האופנוע שלי", icon: "⚙" },
 ];
 
 /**
  * מעטפת הניווט הראשית של האפליקציה.
  * מרנדרת TopNav עליון, מגירת צד, ניווט תחתון למובייל ואזור תוכן מרכזי.
  * @param {Object} props - מאפייני הקומפוננטה.
- * @param {React.ReactNode} props.children - תוכן העמוד הפעיל.
+ * @param {React.ReactNode | ((state: { activeTab: "home" | "routes" | "ride" | "history" | "bike" }) => React.ReactNode)} props.children
+ * - תוכן העמוד הפעיל או פונקציית render prop שמקבלת את activeTab.
  * @returns {JSX.Element} שלד ניווט מלא עם תמיכה ב־RTL.
  */
 function AppShell({ children }) {
-  const [activeTab, setActiveTab] = useState("בית");
+  const [activeTab, setActiveTab] = useState("home");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   /*
    * עדכון לשונית פעילה וסגירת המגירה לאחר בחירה.
    * אין כאן החלפת מסכים עדיין — רק סטייט תצוגה.
    */
-  const handleTabChange = (tabKey) => {
+  const onNavigate = (tabKey) => {
     setActiveTab(tabKey);
     setIsDrawerOpen(false);
   };
@@ -41,7 +42,7 @@ function AppShell({ children }) {
       <TopNav
         items={NAV_ITEMS}
         activeTab={activeTab}
-        onTabChange={handleTabChange}
+        onNavigate={onNavigate}
         onMenuClick={() => setIsDrawerOpen(true)}
       />
 
@@ -50,18 +51,20 @@ function AppShell({ children }) {
         open={isDrawerOpen}
         items={NAV_ITEMS}
         activeTab={activeTab}
-        onTabChange={handleTabChange}
+        onNavigate={onNavigate}
         onClose={() => setIsDrawerOpen(false)}
       />
 
       {/* אזור תוכן עם ריווח תחתון כדי למנוע חפיפה עם BottomNav במובייל */}
-      <main className="pb-24 md:pb-8">{children}</main>
+      <main className="pb-24 md:pb-8">
+        {typeof children === "function" ? children({ activeTab }) : children}
+      </main>
 
       {/* פס ניווט תחתון למובייל בלבד */}
       <BottomNav
         items={NAV_ITEMS}
         activeTab={activeTab}
-        onTabChange={handleTabChange}
+        onNavigate={onNavigate}
       />
     </div>
   );

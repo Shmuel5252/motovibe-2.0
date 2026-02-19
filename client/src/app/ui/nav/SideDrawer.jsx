@@ -5,11 +5,12 @@
  * @param {boolean} props.open - האם המגירה פתוחה.
  * @param {Array<{key: string, label: string, icon: string}>} props.items - פריטי ניווט.
  * @param {string} props.activeTab - הלשונית הפעילה.
- * @param {(tabKey: string) => void} props.onTabChange - עדכון לשונית פעילה.
+ * @param {(tabKey: "home" | "routes" | "ride" | "history" | "bike") => void} props.onNavigate
+ * - מעבר למסך נבחר וסגירת מגירה דרך AppShell.
  * @param {() => void} props.onClose - סגירת המגירה.
  * @returns {JSX.Element} overlay + מגירה ימנית עם תוכן ניווט.
  */
-function SideDrawer({ open, items, activeTab, onTabChange, onClose }) {
+function SideDrawer({ open, items, activeTab, onNavigate, onClose }) {
   return (
     <>
       {/* שכבת overlay כהה לסגירה בלחיצה מחוץ למגירה */}
@@ -56,7 +57,7 @@ function SideDrawer({ open, items, activeTab, onTabChange, onClose }) {
                     {/* נגישות: שמירה על מבנה כפתורים ברור לכל יעד ניווט */}
                     <button
                       type="button"
-                      onClick={() => onTabChange(item.key)}
+                      onClick={() => onNavigate(item.key)}
                       className={[
                         "flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm transition",
                         isActive
