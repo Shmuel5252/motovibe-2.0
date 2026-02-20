@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Autocomplete,
   DirectionsRenderer,
   GoogleMap,
   MarkerF,
@@ -14,7 +13,8 @@ import AppShell from "./app/layouts/AppShell";
 const ISRAEL_DEFAULT_CENTER = { lat: 32.0853, lng: 34.7818 };
 const ISRAEL_DEFAULT_ZOOM = 11;
 const MAP_LOADER_ID = "motovibe-maps";
-const MAP_LIBRARIES = ["maps"];
+/* ספריות טעינת מפה יציבות (כולל Places להצעות אוטומטיות). */
+const MAP_LIBRARIES = ["maps", "places"];
 
 /**
  * שכבת מפה לרכיבה פעילה כאשר קיים מפתח Google Maps.
@@ -220,11 +220,26 @@ function App() {
   const [newRouteType, setNewRouteType] = useState("עירוני");
   const [newRouteDifficulty, setNewRouteDifficulty] = useState("בינוני");
   const [newRouteIsTwisty, setNewRouteIsTwisty] = useState(false);
+  const [isAddRouteExpanded, setIsAddRouteExpanded] = useState(false);
   /* מצב בחירה מהמפה בתוך הטופס עבור מוצא/יעד. */
   const [activeMapPickField, setActiveMapPickField] = useState(null);
+  /* מרכז דינמי לפיקר: נקודה קיימת/גיאוקוד/ברירת מחדל. */
+  const [mapPickCenter, setMapPickCenter] = useState(ISRAEL_DEFAULT_CENTER);
+  /* סטטוס חיפוש מיקום לפתיחת פיקר ליד טקסט שהוקלד. */
+  const [mapPickStatus, setMapPickStatus] = useState("");
+  const mapPickRequestIdRef = useRef(0);
+
+  /* שירות הצעות למוצא/יעד (AutocompleteService). */
+  const [originSuggestions, setOriginSuggestions] = useState([]);
+  const [destinationSuggestions, setDestinationSuggestions] = useState([]);
+  const [activeSuggestionField, setActiveSuggestionField] = useState(null);
   const [newRouteLocationError, setNewRouteLocationError] = useState("");
-  const originAutocompleteRef = useRef(null);
-  const destinationAutocompleteRef = useRef(null);
+
+  const isPlacesSuggestionsReady =
+    isGoogleMapsLoaded &&
+    !googleMapsLoadError &&
+    typeof window !== "undefined" &&
+    Boolean(window.google?.maps?.places);
 
   const filterChips = ["הכל", "קצר", "בינוני", "ארוך", "שטח"];
 
@@ -297,19 +312,99 @@ function App() {
     return difficulty;
   };
 
-  /**
-   * מחלץ נקודת Lat/Lng מאובייקט מקום של Google Places.
-   * @param {google.maps.places.PlaceResult | undefined} place - תוצאת Place.
-   * @returns {{lat: number, lng: number} | null} נקודת מפה תקפה או null.
-   */
-  const getLatLngFromPlace = (place) => {
-    const location = place?.geometry?.location;
-    if (!location) {
-      return null;
+  /* ניקוי הצעות כאשר שירות המקומות לא זמין. */
+  useEffect(() => {
+    if (isPlacesSuggestionsReady) {
+      return;
     }
 
-    return { lat: location.lat(), lng: location.lng() };
-  };
+    setOriginSuggestions([]);
+    setDestinationSuggestions([]);
+  }, [isPlacesSuggestionsReady]);
+
+  /* הצעות למוצא: קריאה מדובנסת ל-AutocompleteService. */
+  useEffect(() => {
+    if (!isPlacesSuggestionsReady) {
+      setOriginSuggestions([]);
+      return;
+    }
+
+    const input = newOriginLabel.trim();
+    if (!input) {
+      setOriginSuggestions([]);
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      /* הגנת שירות: מריצים Autocomplete רק כאשר Places זמין בפועל. */
+      if (!window.google?.maps?.places) {
+        setOriginSuggestions([]);
+        return;
+      }
+
+      const service = new window.google.maps.places.AutocompleteService();
+      service.getPlacePredictions(
+        {
+          input,
+          componentRestrictions: { country: "il" },
+        },
+        (predictions, status) => {
+          if (status !== window.google.maps.places.PlacesServiceStatus.OK) {
+            setOriginSuggestions([]);
+            return;
+          }
+
+          setOriginSuggestions(predictions || []);
+        },
+      );
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [newOriginLabel, isPlacesSuggestionsReady]);
+
+  /* הצעות ליעד: קריאה מדובנסת ל-AutocompleteService. */
+  useEffect(() => {
+    if (!isPlacesSuggestionsReady) {
+      setDestinationSuggestions([]);
+      return;
+    }
+
+    const input = newDestinationLabel.trim();
+    if (!input) {
+      setDestinationSuggestions([]);
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      /* הגנת שירות: מריצים Autocomplete רק כאשר Places זמין בפועל. */
+      if (!window.google?.maps?.places) {
+        setDestinationSuggestions([]);
+        return;
+      }
+
+      const service = new window.google.maps.places.AutocompleteService();
+      service.getPlacePredictions(
+        {
+          input,
+          componentRestrictions: { country: "il" },
+        },
+        (predictions, status) => {
+          if (status !== window.google.maps.places.PlacesServiceStatus.OK) {
+            setDestinationSuggestions([]);
+            return;
+          }
+
+          setDestinationSuggestions(predictions || []);
+        },
+      );
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [newDestinationLabel, isPlacesSuggestionsReady]);
 
   /**
    * מחזיר נתיב למסלול עבור Polyline במפת פרטי מסלול.
@@ -387,12 +482,10 @@ function App() {
     const safePath = getSafePolylinePath(path);
     const startPoint = safePath[0] ?? null;
     const endPoint = safePath.length > 1 ? safePath[safePath.length - 1] : null;
-    const selectedOrigin = isValidMapPoint(preferredOrigin)
-      ? preferredOrigin
-      : startPoint;
+    const selectedOrigin = isValidMapPoint(preferredOrigin) ? preferredOrigin : null;
     const selectedDestination = isValidMapPoint(preferredDestination)
       ? preferredDestination
-      : endPoint;
+      : null;
 
     /* דיבוג Directions: בקשת מסלול אמיתי בין נקודות התחלה/סיום. */
     useEffect(() => {
@@ -561,6 +654,13 @@ function App() {
             {selectedOrigin && <MarkerF position={selectedOrigin} title="התחלה" />}
             {selectedDestination && (
               <MarkerF position={selectedDestination} title="סיום" />
+            )}
+
+            {/* מצב ללא נקודות: ממשיכים UI ללא Directions */}
+            {!selectedOrigin && !selectedDestination && (
+              <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-xs text-slate-200">
+                אין נקודות למפה
+              </div>
             )}
           </GoogleMap>
 
@@ -948,6 +1048,10 @@ function App() {
     isMapLoaded,
     mapLoadError,
   }) => {
+    /* אינדיקציית דיבוג מינימלית: האם ספריית Places נטענה בדפדפן. */
+    const isPlacesDebugReady =
+      typeof window !== "undefined" && Boolean(window.google?.maps?.places);
+
     const isPlacesApiReady =
       isMapLoaded &&
       !mapLoadError &&
@@ -969,9 +1073,160 @@ function App() {
 
     const closeRoutesDropdown = () => setIsRoutesFilterMenuOpen(false);
 
-    /* פתיחה/סגירה של בחירת נקודה מהמפה לשדה מוצא/יעד. */
-    const openInlineMapPicker = (target) => setActiveMapPickField(target);
-    const closeInlineMapPicker = () => setActiveMapPickField(null);
+    /* פענוח הצעת Places לנקודה: קודם getDetails, ואז fallback ל-Geocoder לפי placeId. */
+    const resolveSuggestionToPoint = (suggestion) =>
+      new Promise((resolve) => {
+        if (!window.google?.maps?.places) {
+          resolve(null);
+          return;
+        }
+
+        const placeId = suggestion?.place_id;
+        if (!placeId) {
+          resolve(null);
+          return;
+        }
+
+        const fallbackLabel = suggestion?.description || "";
+
+        const onGeocodeFallback = () => {
+          if (!window.google?.maps?.Geocoder) {
+            resolve(null);
+            return;
+          }
+
+          const geocoder = new window.google.maps.Geocoder();
+          geocoder.geocode({ placeId }, (results, status) => {
+            if (status === "OK" && results?.[0]?.geometry?.location) {
+              const location = results[0].geometry.location;
+              resolve({
+                point: { lat: location.lat(), lng: location.lng() },
+                label: fallbackLabel,
+              });
+              return;
+            }
+
+            resolve(null);
+          });
+        };
+
+        try {
+          const placesService = new window.google.maps.places.PlacesService(
+            document.createElement("div"),
+          );
+          placesService.getDetails(
+            {
+              placeId,
+              fields: ["geometry", "name", "formatted_address"],
+            },
+            (place, status) => {
+              if (
+                status === window.google.maps.places.PlacesServiceStatus.OK &&
+                place?.geometry?.location
+              ) {
+                const location = place.geometry.location;
+                resolve({
+                  point: { lat: location.lat(), lng: location.lng() },
+                  label:
+                    place.formatted_address || place.name || fallbackLabel,
+                });
+                return;
+              }
+
+              onGeocodeFallback();
+            },
+          );
+        } catch {
+          onGeocodeFallback();
+        }
+      });
+
+    /* החלת בחירת הצעה על שדה פעיל: טקסט + LatLng, ואז סגירת הרשימה. */
+    const applySuggestionSelection = async (target, suggestion) => {
+      const chosenLabel = suggestion?.description || "";
+
+      if (target === "from") {
+        setNewOriginLabel(chosenLabel);
+        setOriginSuggestions([]);
+      } else {
+        setNewDestinationLabel(chosenLabel);
+        setDestinationSuggestions([]);
+      }
+
+      setActiveSuggestionField(null);
+
+      const resolved = await resolveSuggestionToPoint(suggestion);
+      if (!resolved?.point) {
+        return;
+      }
+
+      if (target === "from") {
+        setNewOriginLatLng(resolved.point);
+        setNewOriginLabel(chosenLabel || resolved.label);
+      } else {
+        setNewDestinationLatLng(resolved.point);
+        setNewDestinationLabel(chosenLabel || resolved.label);
+      }
+
+      setNewRouteLocationError("");
+    };
+
+    /* פתיחת פיקר מפה ליד נקודה קיימת/גיאוקוד טקסט/ברירת מחדל. */
+    const openInlineMapPicker = (target) => {
+      setActiveMapPickField(target);
+
+      const existingPoint =
+        target === "from" ? newOriginLatLng : newDestinationLatLng;
+      const labelText =
+        target === "from"
+          ? newOriginLabel.trim()
+          : newDestinationLabel.trim();
+
+      const nextRequestId = mapPickRequestIdRef.current + 1;
+      mapPickRequestIdRef.current = nextRequestId;
+
+      if (isValidMapPoint(existingPoint)) {
+        setMapPickCenter(existingPoint);
+        setMapPickStatus("");
+        return;
+      }
+
+      setMapPickCenter(ISRAEL_DEFAULT_CENTER);
+
+      if (
+        !labelText ||
+        !isMapLoaded ||
+        mapLoadError ||
+        !window.google?.maps?.Geocoder
+      ) {
+        setMapPickStatus("");
+        return;
+      }
+
+      setMapPickStatus("מחפש מיקום...");
+      const geocoder = new window.google.maps.Geocoder();
+      geocoder.geocode({ address: labelText }, (results, status) => {
+        if (mapPickRequestIdRef.current !== nextRequestId) {
+          return;
+        }
+
+        if (status === "OK" && results?.[0]?.geometry?.location) {
+          const location = results[0].geometry.location;
+          setMapPickCenter({ lat: location.lat(), lng: location.lng() });
+          setMapPickStatus("");
+          return;
+        }
+
+        setMapPickCenter(ISRAEL_DEFAULT_CENTER);
+        setMapPickStatus("לא נמצא מיקום — בחר ידנית");
+      });
+    };
+
+    const closeInlineMapPicker = () => {
+      mapPickRequestIdRef.current += 1;
+      setMapPickStatus("");
+      setActiveMapPickField(null);
+    };
 
     /* נתיב קו להצגה במסך פרטי מסלול. */
     const routePath = getRoutePolylinePath(selectedRoute);
@@ -1017,8 +1272,12 @@ function App() {
                   onBack={goToRoutesListView}
                   isMapLoaded={isMapLoaded}
                   mapLoadError={mapLoadError}
-                  preferredOrigin={selectedRoute?.origin ?? null}
-                  preferredDestination={selectedRoute?.destination ?? null}
+                  preferredOrigin={
+                    selectedRoute?.origin || selectedRoute?.fromLatLng || null
+                  }
+                  preferredDestination={
+                    selectedRoute?.destination || selectedRoute?.toLatLng || null
+                  }
                 />
               </div>
             </section>
@@ -1107,9 +1366,33 @@ function App() {
               בחר מסלול וצא לרכיבה
             </p>
 
-            {/* יצירת מסלול: שדות בסיס + metadata */}
+            {/* אקורדיון הוספת מסלול: ברירת מחדל סגור */}
             <div className="mv-card mt-4 rounded-2xl p-3">
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <button
+                type="button"
+                onClick={() => setIsAddRouteExpanded((prev) => !prev)}
+                className="flex w-full items-center justify-between rounded-xl px-1 py-1 text-right"
+                aria-expanded={isAddRouteExpanded}
+              >
+                <span className="text-base font-semibold text-slate-100">הוסף מסלול</span>
+                <span className="text-sm text-slate-300">
+                  {isAddRouteExpanded ? "⌃" : "⌄"}
+                </span>
+              </button>
+
+              {/* שורת סיכום במצב סגור */}
+              {!isAddRouteExpanded && (
+                <p className="mt-2 text-sm text-slate-300">
+                  {newOriginLabel && newDestinationLabel
+                    ? `מוצא: ${newOriginLabel} | יעד: ${newDestinationLabel}`
+                    : "בחר מוצא ויעד כדי ליצור מסלול"}
+                </p>
+              )}
+
+              {isAddRouteExpanded && (
+                <>
+              {/* שורת שדות ראשית: שם מסלול + מוצא/יעד נקיים יותר */}
+              <div className="mt-3 grid grid-cols-1 gap-2">
                 <input
                   type="text"
                   value={newRouteTitle}
@@ -1117,111 +1400,108 @@ function App() {
                   placeholder="שם מסלול"
                   className="rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
                 />
-                {/* מוצא: Autocomplete כברירת מחדל + מעבר לבחירה מהמפה */}
+
+                {/* דיבוג זמני: סטטוס טעינת Places ליד שדות מוצא/יעד. */}
+                <div className="flex justify-start">
+                  <span className="mv-pill px-2.5 py-1 text-xs text-slate-200">
+                    {isPlacesDebugReady ? "Places: פעיל" : "Places: לא נטען"}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                {/* מוצא: קלט עם הצעות מהירות + מעבר לבחירה מהמפה */}
                 <div className="space-y-1">
                   <label className="text-xs text-slate-300">מוצא</label>
                   <div className="flex items-center gap-2">
-                    {isPlacesApiReady ? (
-                      <Autocomplete
-                        onLoad={(autocomplete) => {
-                          originAutocompleteRef.current = autocomplete;
-                        }}
-                        onPlaceChanged={() => {
-                          const place = originAutocompleteRef.current?.getPlace?.();
-                          const latLng = getLatLngFromPlace(place);
-                          if (!latLng) {
-                            return;
-                          }
-
-                          setNewOriginLatLng(latLng);
-                          setNewOriginLabel(
-                            place.formatted_address || place.name || "מוצא נבחר",
-                          );
-                          setNewRouteLocationError("");
-                        }}
-                      >
-                        <input
-                          type="text"
-                          value={newOriginLabel}
-                          onChange={(event) => setNewOriginLabel(event.target.value)}
-                          placeholder="חפש מוצא..."
-                          className="w-full rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
-                        />
-                      </Autocomplete>
-                    ) : (
+                    <div className="relative w-full">
                       <input
                         type="text"
                         value={newOriginLabel}
-                        onChange={(event) => setNewOriginLabel(event.target.value)}
+                        onFocus={() => setActiveSuggestionField("from")}
+                        onChange={(event) => {
+                          setNewOriginLabel(event.target.value);
+                          setActiveSuggestionField("from");
+                        }}
                         placeholder="חפש מוצא..."
                         className="w-full rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
                       />
-                    )}
+
+                      {/* רשימת הצעות למוצא (RTL, שכבה עליונה). */}
+                      {isPlacesApiReady &&
+                        activeSuggestionField === "from" &&
+                        originSuggestions.length > 0 && (
+                          <div className="absolute right-0 top-full z-50 mt-1 w-full overflow-hidden rounded-xl border border-white/10 bg-slate-900/95 shadow-lg backdrop-blur">
+                            {originSuggestions.slice(0, 6).map((suggestion) => (
+                              <button
+                                key={suggestion.place_id}
+                                type="button"
+                                onMouseDown={(event) => event.preventDefault()}
+                                onClick={() => applySuggestionSelection("from", suggestion)}
+                                className="block w-full border-b border-white/5 px-3 py-2 text-right text-sm text-slate-100 transition hover:bg-white/10 last:border-b-0"
+                              >
+                                {suggestion.description}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                    </div>
                     <Button
                       variant="ghost"
                       size="md"
                       className="whitespace-nowrap"
                       onClick={() => openInlineMapPicker("from")}
                     >
-                      בחר מוצא במפה
+                      דייק מוצא במפה
                     </Button>
                   </div>
                 </div>
 
-                {/* יעד: Autocomplete כברירת מחדל + מעבר לבחירה מהמפה */}
+                {/* יעד: קלט עם הצעות מהירות + מעבר לבחירה מהמפה */}
                 <div className="space-y-1">
                   <label className="text-xs text-slate-300">יעד</label>
                   <div className="flex items-center gap-2">
-                    {isPlacesApiReady ? (
-                      <Autocomplete
-                        onLoad={(autocomplete) => {
-                          destinationAutocompleteRef.current = autocomplete;
-                        }}
-                        onPlaceChanged={() => {
-                          const place =
-                            destinationAutocompleteRef.current?.getPlace?.();
-                          const latLng = getLatLngFromPlace(place);
-                          if (!latLng) {
-                            return;
-                          }
-
-                          setNewDestinationLatLng(latLng);
-                          setNewDestinationLabel(
-                            place.formatted_address || place.name || "יעד נבחר",
-                          );
-                          setNewRouteLocationError("");
-                        }}
-                      >
-                        <input
-                          type="text"
-                          value={newDestinationLabel}
-                          onChange={(event) =>
-                            setNewDestinationLabel(event.target.value)
-                          }
-                          placeholder="חפש יעד..."
-                          className="w-full rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
-                        />
-                      </Autocomplete>
-                    ) : (
+                    <div className="relative w-full">
                       <input
                         type="text"
                         value={newDestinationLabel}
-                        onChange={(event) =>
-                          setNewDestinationLabel(event.target.value)
-                        }
+                        onFocus={() => setActiveSuggestionField("to")}
+                        onChange={(event) => {
+                          setNewDestinationLabel(event.target.value);
+                          setActiveSuggestionField("to");
+                        }}
                         placeholder="חפש יעד..."
                         className="w-full rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
                       />
-                    )}
+
+                      {/* רשימת הצעות ליעד (RTL, שכבה עליונה). */}
+                      {isPlacesApiReady &&
+                        activeSuggestionField === "to" &&
+                        destinationSuggestions.length > 0 && (
+                          <div className="absolute right-0 top-full z-50 mt-1 w-full overflow-hidden rounded-xl border border-white/10 bg-slate-900/95 shadow-lg backdrop-blur">
+                            {destinationSuggestions.slice(0, 6).map((suggestion) => (
+                              <button
+                                key={suggestion.place_id}
+                                type="button"
+                                onMouseDown={(event) => event.preventDefault()}
+                                onClick={() => applySuggestionSelection("to", suggestion)}
+                                className="block w-full border-b border-white/5 px-3 py-2 text-right text-sm text-slate-100 transition hover:bg-white/10 last:border-b-0"
+                              >
+                                {suggestion.description}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                    </div>
                     <Button
                       variant="ghost"
                       size="md"
                       className="whitespace-nowrap"
                       onClick={() => openInlineMapPicker("to")}
                     >
-                      בחר יעד במפה
+                      דייק יעד במפה
                     </Button>
                   </div>
+                </div>
                 </div>
               </div>
 
@@ -1288,14 +1568,6 @@ function App() {
                       return;
                     }
 
-                    /* ולידציה: חייבים נקודת מוצא ויעד לפני הוספת מסלול. */
-                    if (!newOriginLatLng || !newDestinationLatLng) {
-                      setNewRouteLocationError(
-                        "יש לבחור מוצא ויעד עם נקודה (Autocomplete או מפה)",
-                      );
-                      return;
-                    }
-
                     setNewRouteLocationError("");
 
                     /* אובייקט מסלול חדש כולל labels + קואורדינטות לשימוש עתידי. */
@@ -1305,8 +1577,16 @@ function App() {
                         title,
                         from,
                         to,
-                        origin: newOriginLatLng,
-                        destination: newDestinationLatLng,
+                        fromLabel: from,
+                        toLabel: to,
+                        ...(newOriginLatLng ? { fromLatLng: newOriginLatLng } : {}),
+                        ...(newDestinationLatLng
+                          ? { toLatLng: newDestinationLatLng }
+                          : {}),
+                        ...(newOriginLatLng ? { origin: newOriginLatLng } : {}),
+                        ...(newDestinationLatLng
+                          ? { destination: newDestinationLatLng }
+                          : {}),
                         distanceKm: 28,
                         etaMin: 35,
                         routeType: newRouteType,
@@ -1327,6 +1607,9 @@ function App() {
                     setNewRouteType("עירוני");
                     setNewRouteDifficulty("בינוני");
                     setNewRouteIsTwisty(false);
+                    setOriginSuggestions([]);
+                    setDestinationSuggestions([]);
+                    setActiveSuggestionField(null);
                     closeInlineMapPicker();
                   }}
                 >
@@ -1334,10 +1617,10 @@ function App() {
                 </Button>
               </div>
 
-              {/* שגיאת ולידציה מקומית לטופס יצירת מסלול */}
-              {newRouteLocationError && (
-                <p className="mt-2 text-xs text-rose-300">{newRouteLocationError}</p>
-              )}
+              {/* הערת עזר: דיוק במפה אופציונלי ולא חובה לשמירה */}
+              <p className="mt-2 text-xs text-slate-400">
+                אפשר לשמור עם טקסט בלבד. לדיוק — לחץ "דייק במפה".
+              </p>
 
               {/* בחירה פשוטה מהמפה: לחיצה בודדת לשמירת מוצא/יעד */}
               {activeMapPickField && (
@@ -1368,7 +1651,7 @@ function App() {
                   ) : (
                     <div className="h-[320px] w-full overflow-hidden rounded-xl border border-white/10">
                       <GoogleMap
-                        center={ISRAEL_DEFAULT_CENTER}
+                        center={mapPickCenter}
                         zoom={11}
                         mapContainerStyle={{ width: "100%", height: "100%" }}
                         onLoad={() => {}}
@@ -1411,8 +1694,21 @@ function App() {
                         {mapLoadError.message}
                       </span>
                     )}
+                    {!!mapPickStatus && (
+                      <span
+                        className={`mv-pill px-2.5 py-1 text-xs ${
+                          mapPickStatus === "מחפש מיקום..."
+                            ? "text-emerald-200"
+                            : "text-amber-200"
+                        }`}
+                      >
+                        {mapPickStatus}
+                      </span>
+                    )}
                   </div>
                 </GlassCard>
+              )}
+                </>
               )}
             </div>
 
