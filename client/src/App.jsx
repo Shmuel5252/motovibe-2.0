@@ -217,6 +217,7 @@ function App() {
   ]);
   const [authToken, setAuthToken] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
   const [showAuthScreen, setShowAuthScreen] = useState(false);
   const [authMode, setAuthMode] = useState("login");
   const [authName, setAuthName] = useState("");
@@ -273,27 +274,37 @@ function App() {
   const handleLogout = () => {
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(AUTH_TOKEN_KEY || "mv_token");
+      // בהתנתקות מנקים גם את פרטי המשתמש
+      window.localStorage.removeItem("mv_user");
     }
 
     delete apiClient.defaults.headers.common.Authorization;
     setAuthToken("");
+    setCurrentUser(null);
     setIsAuthenticated(false);
     setShowAuthScreen(true);
   };
 
   /* הצלחת אימות: שמירה ב-localStorage, חיבור Bearer ועדכון סטייט התחברות. */
-  const applyAuthSuccess = (token) => {
+  const applyAuthSuccess = (token, user = null) => {
     if (!token) {
       return;
     }
 
     if (typeof window !== "undefined") {
       window.localStorage.setItem(AUTH_TOKEN_KEY, token);
+      // שמירת המשתמש כדי להציג שם אמיתי גם אחרי רענון
+      if (user && typeof user === "object") {
+        window.localStorage.setItem("mv_user", JSON.stringify(user));
+      }
     }
 
     apiClient.defaults.headers.common.Authorization = `Bearer ${token}`;
     axios.defaults.headers.common.Authorization = `Bearer ${token}`;
     setAuthToken(token);
+    if (user && typeof user === "object") {
+      setCurrentUser(user);
+    }
     setIsAuthenticated(true);
     setShowAuthScreen(false);
   };
@@ -301,6 +312,9 @@ function App() {
   /* חילוץ טוקן מתשובת Auth (תומך גם ב-response עם user+token). */
   const extractTokenFromAuthResponse = (data) =>
     data?.token || data?.data?.token || "";
+
+  const extractUserFromAuthResponse = (data) =>
+    data?.user || data?.data?.user || null;
 
   /* שליחת התחברות/הרשמה לשרת ועדכון מצב מאומת באפליקציה. */
   const submitAuthForm = async ({ onNavigate }) => {
@@ -327,12 +341,13 @@ function App() {
 
       const response = await apiClient.post(endpoint, payload);
       const token = extractTokenFromAuthResponse(response.data);
+      const user = extractUserFromAuthResponse(response.data);
       if (!token) {
         setAuthError("לא התקבל טוקן מהשרת");
         return;
       }
 
-      applyAuthSuccess(token);
+      applyAuthSuccess(token, user);
       await fetchRoutesFromServer(token);
       onNavigate("home");
     } catch (error) {
@@ -413,6 +428,19 @@ function App() {
       setIsAuthenticated(false);
       setShowAuthScreen(true);
       return;
+    }
+
+    // אתחול משתמש מה-localStorage כדי שהשם יוצג גם אחרי רענון
+    const rawStoredUser = window.localStorage.getItem("mv_user");
+    if (rawStoredUser) {
+      try {
+        const parsedUser = JSON.parse(rawStoredUser);
+        if (parsedUser && typeof parsedUser === "object") {
+          setCurrentUser(parsedUser);
+        }
+      } catch {
+        window.localStorage.removeItem("mv_user");
+      }
     }
 
     applyAuthSuccess(storedToken);
@@ -1130,7 +1158,7 @@ function App() {
         <section className="grid grid-cols-1 items-center gap-5 md:grid-cols-2">
           <div>
             <h1 className="text-4xl font-bold leading-tight sm:text-5xl">
-              שלום שמואל
+              {currentUser?.name ? `שלום ${currentUser.name}` : "שלום רוכב"}
             </h1>
             <p className="mt-2 text-lg text-slate-300">מוכן לרכיבה</p>
             <Button
