@@ -72,6 +72,22 @@ function RideActiveMap({
   );
 }
 
+function BikeTabLoader({ activeTab, isAuthenticated, onLoad }) {
+  const wasBikeTabRef = useRef(false);
+
+  useEffect(() => {
+    const isBikeTab = activeTab === "bike";
+
+    if (isAuthenticated && isBikeTab && !wasBikeTabRef.current) {
+      onLoad();
+    }
+
+    wasBikeTabRef.current = isBikeTab;
+  }, [activeTab, isAuthenticated, onLoad]);
+
+  return null;
+}
+
 /**
  * מסך האפליקציה הראשי.
  * רינדור המסך מתבצע לפי activeTab שמנוהל ב־AppShell (ללא Router בשלב זה).
@@ -80,6 +96,7 @@ function RideActiveMap({
 function App() {
   const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   const apiClient = useMemo(() => axios.create({ baseURL: API_BASE_URL }), []);
+  const api = apiClient;
 
   const LOADER_OPTIONS = useMemo(
     () => ({
@@ -227,6 +244,9 @@ function App() {
   const [isAuthSubmitting, setIsAuthSubmitting] = useState(false);
   const [isRoutesLoading, setIsRoutesLoading] = useState(false);
   const [routesLoadError, setRoutesLoadError] = useState("");
+  const [bikes, setBikes] = useState([]);
+  const [bikesLoading, setBikesLoading] = useState(false);
+  const [bikesError, setBikesError] = useState("");
 
   /* טופס יצירה מקומי למסלול חדש במסך Routes. */
   const [newRouteTitle, setNewRouteTitle] = useState("");
@@ -414,6 +434,42 @@ function App() {
       setRoutesLoadError("טעינת מסלולים נכשלה");
     } finally {
       setIsRoutesLoading(false);
+    }
+  };
+
+  // טעינת רשימת אופנועים מהשרת
+  const fetchBikesFromServer = async (tokenOverride) => {
+    const effectiveToken = tokenOverride || authToken;
+    if (!effectiveToken) {
+      return;
+    }
+
+    setBikesLoading(true);
+    setBikesError("");
+
+    try {
+      const response = await api.get("/bikes", {
+        headers: { Authorization: `Bearer ${effectiveToken}` },
+      });
+
+      const list = Array.isArray(response.data)
+        ? response.data
+        : response.data?.data || [];
+      setBikes(Array.isArray(list) ? list : []);
+    } catch (error) {
+      if (error?.response?.status === 401) {
+        handleUnauthorized();
+        return;
+      }
+
+      if (error?.response?.status === 404) {
+        setBikesError("עדיין אין API לאופנועים בשרת");
+        return;
+      }
+
+      setBikesError("טעינת אופנועים נכשלה");
+    } finally {
+      setBikesLoading(false);
     }
   };
 
@@ -2629,6 +2685,43 @@ function App() {
           </p>
         </section>
 
+        {/* תצוגת "האופנוע שלי" עם נתונים אמיתיים */}
+        <section className="mt-4">
+          {bikesLoading && (
+            <p className="text-xs text-slate-300">טוען אופנועים...</p>
+          )}
+          {!!bikesError && (
+            <p className="text-xs text-rose-300">{bikesError}</p>
+          )}
+
+          {!bikesLoading && !bikesError && bikes.length === 0 && (
+            <GlassCard>
+              <p className="text-sm text-slate-200">אין אופנועים עדיין</p>
+              <p className="mt-1 text-xs text-slate-400">אפשר להוסיף בהמשך</p>
+            </GlassCard>
+          )}
+
+          {!bikesLoading && !bikesError && bikes.length > 0 && (
+            <div className="space-y-3">
+              {bikes.map((bike, index) => (
+                <GlassCard key={bike?._id || bike?.id || `bike-${index}`}>
+                  <p className="text-sm font-semibold text-slate-100">
+                    {bike?.name || bike?.model || "האופנוע שלי"}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-300">
+                    ק״מ: {bike?.mileage ?? bike?.odometer ?? 0}
+                  </p>
+                  {bike?.nextServiceKm != null && (
+                    <p className="mt-1 text-xs text-slate-400">
+                      טיפול הבא: {bike.nextServiceKm} ק״מ
+                    </p>
+                  )}
+                </GlassCard>
+              ))}
+            </div>
+          )}
+        </section>
+
         {/* Hero ראשי עם תחושת תמונה + פעולות מהירות */}
         <section className="mt-6">
           <GlassCard
@@ -2927,13 +3020,26 @@ function App() {
         rideElapsedSeconds,
         onNavigate,
       }) => {
+        const bikeTabLoader = (
+          <BikeTabLoader
+            activeTab={activeTab}
+            isAuthenticated={isAuthenticated}
+            onLoad={() => fetchBikesFromServer()}
+          />
+        );
+
         /* מצב אורח: מציגים מסך אימות מינימלי עד קבלת טוקן. */
         if (showAuthScreen || !isAuthenticated) {
-          return renderAuthScreen({
-            isRideActive,
-            isRideMinimized,
-            onNavigate,
-          });
+          return (
+            <>
+              {bikeTabLoader}
+              {renderAuthScreen({
+                isRideActive,
+                isRideMinimized,
+                onNavigate,
+              })}
+            </>
+          );
         }
 
         /* מסלול מוצג רק אם התחלנו רכיבה מתוך מסלולים; מעבר רגיל ל-Ride מנקה מסלול. */
@@ -2954,65 +3060,90 @@ function App() {
 
         /* מיפוי תצוגה לפי הטאב הפעיל (ללא Router בשלב זה). */
         if (activeTab === "home") {
-          return renderHomeScreen({
-            isRideActive,
-            isRideMinimized,
-            setIsRideActive,
-            setIsRidePaused,
-            setIsRideMinimized,
-            setSelectedRoute,
-            setDidStartFromRoute,
-            onNavigate: navigateTo,
-          });
+          return (
+            <>
+              {bikeTabLoader}
+              {renderHomeScreen({
+                isRideActive,
+                isRideMinimized,
+                setIsRideActive,
+                setIsRidePaused,
+                setIsRideMinimized,
+                setSelectedRoute,
+                setDidStartFromRoute,
+                onNavigate: navigateTo,
+              })}
+            </>
+          );
         }
 
         if (activeTab === "routes") {
-          return renderRoutesScreen({
-            isRideActive,
-            isRideMinimized,
-            setIsRideActive,
-            setIsRidePaused,
-            setIsRideMinimized,
-            setDidStartFromRoute,
-            onNavigate: navigateTo,
-            mapApiKey: googleMapsApiKey,
-            isMapLoaded: isGoogleMapsLoaded,
-            mapLoadError: googleMapsLoadError,
-          });
+          return (
+            <>
+              {bikeTabLoader}
+              {renderRoutesScreen({
+                isRideActive,
+                isRideMinimized,
+                setIsRideActive,
+                setIsRidePaused,
+                setIsRideMinimized,
+                setDidStartFromRoute,
+                onNavigate: navigateTo,
+                mapApiKey: googleMapsApiKey,
+                isMapLoaded: isGoogleMapsLoaded,
+                mapLoadError: googleMapsLoadError,
+              })}
+            </>
+          );
         }
 
         if (activeTab === "ride") {
-          return renderRideScreen({
-            isRideActive,
-            isRidePaused,
-            isRideMinimized,
-            rideElapsedSeconds,
-            setIsRideActive,
-            setIsRidePaused,
-            setIsRideMinimized,
-            selectedRoute,
-            didStartFromRoute,
-            setDidStartFromRoute,
-            onNavigate: navigateTo,
-            mapApiKey: googleMapsApiKey,
-            isMapLoaded: isGoogleMapsLoaded,
-            mapLoadError: googleMapsLoadError,
-          });
+          return (
+            <>
+              {bikeTabLoader}
+              {renderRideScreen({
+                isRideActive,
+                isRidePaused,
+                isRideMinimized,
+                rideElapsedSeconds,
+                setIsRideActive,
+                setIsRidePaused,
+                setIsRideMinimized,
+                selectedRoute,
+                didStartFromRoute,
+                setDidStartFromRoute,
+                onNavigate: navigateTo,
+                mapApiKey: googleMapsApiKey,
+                isMapLoaded: isGoogleMapsLoaded,
+                mapLoadError: googleMapsLoadError,
+              })}
+            </>
+          );
         }
 
         if (activeTab === "history") {
-          return renderHistoryScreen({
-            isRideActive,
-            isRideMinimized,
-            onNavigate: navigateTo,
-          });
+          return (
+            <>
+              {bikeTabLoader}
+              {renderHistoryScreen({
+                isRideActive,
+                isRideMinimized,
+                onNavigate: navigateTo,
+              })}
+            </>
+          );
         }
 
-        return renderBikeScreen({
-          isRideActive,
-          isRideMinimized,
-          onNavigate: navigateTo,
-        });
+        return (
+          <>
+            {bikeTabLoader}
+            {renderBikeScreen({
+              isRideActive,
+              isRideMinimized,
+              onNavigate: navigateTo,
+            })}
+          </>
+        );
       }}
     </AppShell>
   );
