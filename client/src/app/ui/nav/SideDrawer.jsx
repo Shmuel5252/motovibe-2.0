@@ -10,7 +10,7 @@
  * @param {() => void} props.onClose - סגירת המגירה.
  * @returns {JSX.Element} overlay + מגירה ימנית עם תוכן ניווט.
  */
-function SideDrawer({ open, items, activeTab, onNavigate, onClose }) {
+function SideDrawer({ open, items, activeTab, onNavigate, onClose, onLogout }) {
   return (
     <>
       {/* שכבת overlay כהה לסגירה בלחיצה מחוץ למגירה */}
@@ -87,13 +87,16 @@ function SideDrawer({ open, items, activeTab, onNavigate, onClose }) {
             </div>
           </section>
 
-          {/* כפתור התנתקות מושבת עד חיבור לוגיקה */}
+          {/* // כפתור התנתקות מחובר ללוגיקה מה-App */}
           <button
             type="button"
-            disabled
-            className="mt-auto cursor-not-allowed rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-500"
+            onClick={() => {
+              onLogout?.();
+              onClose?.();
+            }}
+            className="mt-auto rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200 transition hover:bg-white/10"
           >
-            התנתקות (בקרוב)
+            התנתקות
           </button>
         </div>
       </aside>
