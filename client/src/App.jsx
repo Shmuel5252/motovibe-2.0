@@ -272,6 +272,7 @@ function App() {
                 setSearchQuery={state.setSearchQuery}
                 apiClient={state.apiClient}
                 fetchHistoryFromServer={state.fetchHistoryFromServer}
+                fetchRoutesFromServer={state.fetchRoutesFromServer}
               />
             </>
           );

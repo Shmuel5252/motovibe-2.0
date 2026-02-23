@@ -502,6 +502,8 @@ export default function RoutesPage({
   const routeNote = selectedRoute?.note || "מסלול זורם ומתאים לרכיבה יומית.";
 
   /* ─── תצוגת פרטי מסלול ─── */
+  const [routeDeleteError, setRouteDeleteError] = useState("");
+
   if (routesView === "routeDetails" && selectedRoute) {
     return (
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 pb-10 pt-5 sm:px-6">
@@ -589,7 +591,7 @@ export default function RoutesPage({
             </GlassCard>
           </section>
 
-          {/* פעולות: התחלת רכיבה או חזרה לרשימת המסלולים */}
+          {/* פעולות: התחלת רכיבה, מחיקה, חזרה */}
           <section className="mt-6">
             <div className="flex flex-wrap items-center gap-2">
               <Button
@@ -604,10 +606,37 @@ export default function RoutesPage({
               >
                 התחל
               </Button>
+
+              {/* מחיקת מסלול */}
+              <Button
+                variant="ghost"
+                size="md"
+                className="border-rose-300/30 text-rose-300 hover:text-rose-200"
+                onClick={async () => {
+                  if (!window.confirm("האם אתה בטוח שברצונך למחוק מסלול זה?")) return;
+                  setRouteDeleteError("");
+                  const routeId = selectedRoute._id || selectedRoute.id;
+                  try {
+                    await apiClient.delete(`/routes/${routeId}`);
+                    await fetchRoutesFromServer(authToken);
+                    goToRoutesListView();
+                  } catch (err) {
+                    console.error("DELETE route error:", err?.response?.status, err?.message);
+                    setRouteDeleteError("שגיאה במחיקת מסלול");
+                  }
+                }}
+              >
+                מחק מסלול
+              </Button>
+
               <Button variant="ghost" size="md" onClick={goToRoutesListView}>
                 חזרה למסלולים
               </Button>
             </div>
+            {/* שגיאת מחיקה inline */}
+            {routeDeleteError && (
+              <p className="mt-2 text-xs text-rose-300">{routeDeleteError}</p>
+            )}
           </section>
         </main>
       </div>
@@ -982,7 +1011,7 @@ export default function RoutesPage({
                           center={mapPickCenter}
                           zoom={11}
                           mapContainerStyle={{ width: "100%", height: "100%" }}
-                          onLoad={() => {}}
+                          onLoad={() => { }}
                           onClick={(event) => {
                             const lat = event.latLng?.lat();
                             const lng = event.latLng?.lng();
@@ -1037,11 +1066,10 @@ export default function RoutesPage({
                       )}
                       {!!mapPickStatus && (
                         <span
-                          className={`mv-pill px-2.5 py-1 text-xs ${
-                            mapPickStatus === "מחפש מיקום..."
-                              ? "text-emerald-200"
-                              : "text-amber-200"
-                          }`}
+                          className={`mv-pill px-2.5 py-1 text-xs ${mapPickStatus === "מחפש מיקום..."
+                            ? "text-emerald-200"
+                            : "text-amber-200"
+                            }`}
                         >
                           {mapPickStatus}
                         </span>

@@ -31,6 +31,17 @@ const rideSchema = new mongoose.Schema(
             startedAt: { type: Date, required: true },
             endedAt: { type: Date, default: null },
             durationSeconds: { type: Number, default: 0 },
+            /* נקודות GPS שהוקלטו במהלך הרכיבה */
+            path: {
+                type: [
+                    {
+                        lat: { type: Number, required: true },
+                        lng: { type: Number, required: true },
+                        t:   { type: Date, default: () => new Date() },
+                    }
+                ],
+                default: [],
+            },
         },
     { timestamps: true }
 );

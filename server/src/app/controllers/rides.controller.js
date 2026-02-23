@@ -90,9 +90,20 @@ async function stopRide(req, res) {
 
     ride.endedAt = endedAt;
     ride.durationSeconds = durationSeconds;
-    await ride.save();
 
-        return res.status(200).json({ ride });
+    /* שמירת נתיב GPS אם נשלח מהלקוח */
+    const { path } = req.body;
+    if (Array.isArray(path) && path.length > 0) {
+        /* סינון נקודות תקינות בלבד + הגבלת גודל למניעת שימוש לרעה */
+        const sanitized = path
+            .filter(p => typeof p.lat === 'number' && isFinite(p.lat) &&
+                         typeof p.lng === 'number' && isFinite(p.lng))
+            .slice(-2000);
+        ride.path = sanitized;
+    }
+
+    await ride.save();
+    return res.status(200).json({ ride });
 }
 
 async function getActiveRide(req, res) {

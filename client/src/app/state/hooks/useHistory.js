@@ -12,9 +12,13 @@ import { useEffect, useState } from "react";
  */
 function formatDuration(seconds) {
   const totalSeconds = Math.max(0, Math.floor(seconds || 0));
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  return `${hours}:${String(minutes).padStart(2, "0")}`;
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  if (h > 0) {
+    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  }
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
 /**
@@ -33,6 +37,30 @@ function formatDate(dateInput) {
 }
 
 /**
+ * חישוב מרחק בק"מ מנתיב GPS לפי נוסחת Haversine.
+ * @param {Array<{lat: number, lng: number}>} path
+ * @returns {number}
+ */
+function calculatePathDistance(path) {
+  if (!Array.isArray(path) || path.length < 2) return 0;
+  const R = 6371;
+  let total = 0;
+  for (let i = 1; i < path.length; i++) {
+    const prev = path[i - 1];
+    const curr = path[i];
+    const dLat = ((curr.lat - prev.lat) * Math.PI) / 180;
+    const dLng = ((curr.lng - prev.lng) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos((prev.lat * Math.PI) / 180) *
+        Math.cos((curr.lat * Math.PI) / 180) *
+        Math.sin(dLng / 2) ** 2;
+    total += R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+  return total;
+}
+
+/**
  * ממיר מסמך Ride מהשרת לצורה שה-UI מצפה לה.
  * @param {Object} ride
  * @returns {{ id: string, title: string, date: string, duration: string, distance: string }}
@@ -47,21 +75,35 @@ function mapRideToUIShape(ride) {
   /* תאריך: endedAt > createdAt > startedAt */
   const date = formatDate(ride.endedAt || ride.createdAt || ride.startedAt);
 
-  /* משך: durationSeconds בפורמט H:MM */
-  const duration = formatDuration(ride.durationSeconds);
+  /* משך: durationSeconds, או חישוב מ-endedAt/startedAt אם 0 */
+  const rawSeconds =
+    ride.durationSeconds ||
+    (ride.endedAt && ride.startedAt
+      ? Math.max(0, Math.floor(
+          (new Date(ride.endedAt) - new Date(ride.startedAt)) / 1000
+        ))
+      : 0);
+  const duration = formatDuration(rawSeconds);
 
-  /* מרחק: ride.distanceKm > snapshot, עיגון לספרה אחת */
+  /* מרחק: snapshot > חישוב מנתיב GPS > 0 */
   const rawKm =
-    ride.distanceKm ?? ride.routeSnapshot?.distanceKm ?? 0;
+    ride.routeSnapshot?.distanceKm ??
+    (ride.path?.length >= 2 ? calculatePathDistance(ride.path) : 0);
   const km = Math.round(rawKm * 10) / 10;
   const distance = `${km} ק״מ`;
 
   return {
     id: ride._id || ride.id,
+    /* שם מקורי מהשרת — לשימוש edit/convert */
+    name: ride.name || "",
     title,
     date,
     duration,
     distance,
+    /* snapshot מסלול — לשימוש המרה למסלול קבוע */
+    routeSnapshot: ride.routeSnapshot || null,
+    /* מסמך גולמי מהשרת — גישה ל-path ושדות נוספים */
+    raw: ride,
   };
 }
 

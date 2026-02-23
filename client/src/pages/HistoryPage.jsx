@@ -61,22 +61,30 @@ export default function HistoryPage({
   setSearchQuery,
   apiClient,
   fetchHistoryFromServer,
+  fetchRoutesFromServer,
 }) {
   /* שם לעריכה במודל הפרטים */
   const [editName, setEditName] = useState("");
   /* שגיאה מקומית במודל */
   const [modalError, setModalError] = useState("");
+  /* שגיאת המרה למסלול */
+  const [convertError, setConvertError] = useState("");
+  const [convertSuccess, setConvertSuccess] = useState(false);
 
   /* אתחול editName כשנפתחת רכיבה חדשה */
   const openRide = (ride) => {
     setEditName(ride.name || ride.title || "");
     setModalError("");
+    setConvertError("");
+    setConvertSuccess(false);
     setSelectedHistoryRide(ride);
   };
 
   const closeModal = () => {
     setSelectedHistoryRide(null);
     setModalError("");
+    setConvertError("");
+    setConvertSuccess(false);
   };
 
   /* סינון מקומי פשוט לפי שם רכיבה (case-insensitive). */
@@ -357,11 +365,74 @@ export default function HistoryPage({
                     מחק רכיבה
                   </Button>
 
+                  {/* המרת רכיבה למסלול קבוע */}
+                  <Button
+                    variant="ghost"
+                    size="md"
+                    className="border-emerald-300/30 text-emerald-300 hover:text-emerald-200"
+                    onClick={async () => {
+                      setConvertError("");
+                      setConvertSuccess(false);
+
+                      /* גישה לנתונים הגולמיים מהשרת */
+                      const raw = selectedHistoryRide.raw || selectedHistoryRide;
+                      const snap = raw.routeSnapshot;
+                      const path = Array.isArray(raw.path) ? raw.path : [];
+
+                      let payload;
+
+                      if (snap?.start && snap?.end) {
+                        /* מקרה 1: routeSnapshot עם נקודות ידועות */
+                        payload = {
+                          title: (
+                            raw.name || raw.title || snap.title || "מסלול חדש"
+                          ).trim(),
+                          start: snap.start,
+                          end: snap.end,
+                        };
+                      } else if (path.length >= 2) {
+                        /* מקרה 2: רכיבה חופשית עם נתיב GPS מוקלט */
+                        const first = path[0];
+                        const last = path[path.length - 1];
+                        payload = {
+                          title: (
+                            raw.name || raw.title || snap?.title || "רכיבה חופשית"
+                          ).trim(),
+                          start: { lat: first.lat, lng: first.lng, label: "נקודת התחלה" },
+                          end: { lat: last.lat, lng: last.lng, label: "יעד" },
+                        };
+                      } else {
+                        /* מקרה 3: אין מספיק נתונים */
+                        setConvertError("אין מספיק נתונים להפוך למסלול");
+                        return;
+                      }
+
+                      try {
+                        await apiClient.post("/routes", payload);
+                        await fetchRoutesFromServer();
+                        setConvertSuccess(true);
+                      } catch (err) {
+                        console.error("המרה למסלול נכשלה:", err?.response?.status, err?.message);
+                        setConvertError("שגיאה בשמירה כמסלול");
+                      }
+                    }}
+                  >
+                    הפוך למסלול קבוע
+                  </Button>
+
                   {/* סגירת המודל */}
                   <Button variant="ghost" size="md" onClick={closeModal}>
                     סגור
                   </Button>
                 </div>
+
+                {/* המרה למסלול: שגיאה/הצלחה */}
+                {convertError && (
+                  <p className="mt-2 text-xs text-rose-300">{convertError}</p>
+                )}
+                {convertSuccess && (
+                  <p className="mt-2 text-xs text-emerald-300">נשמר כמסלול ✅</p>
+                )}
               </GlassCard>
             </div>
           </div>

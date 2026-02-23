@@ -322,20 +322,80 @@ export default function RidePage({
   const [lastRideId, setLastRideId] = useState(null);
   const [showNameModal, setShowNameModal] = useState(false);
   const [rideName, setRideName] = useState("");
+  /* נתיב GPS שהוקלט במהלך הרכיבה */
+  const [recordedPath, setRecordedPath] = useState([]);
 
+  /* מעקב GPS רציף: פעיל כשהרכיבה פעילה ולא מושהית */
+  /* מעקב GPS: מנסה watchPosition, ואם נכשל — fallback לפולינג עם getCurrentPosition */
+  useEffect(() => {
+    if (!isRideActive || isRidePaused) return;
+    if (!navigator.geolocation) return;
+
+    let watchId = null;
+    let pollId = null;
+
+    const pushPoint = (pos) => {
+      const p = {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        t: new Date().toISOString(),
+      };
+
+      setRecordedPath((prev) => {
+        /* מניעת נקודות כפולות/רעש */
+        const last = prev[prev.length - 1];
+        if (
+          last &&
+          Math.abs(last.lat - p.lat) < 0.00005 &&
+          Math.abs(last.lng - p.lng) < 0.00005
+        ) {
+          return prev;
+        }
+        return [...prev, p];
+      });
+    };
+
+    // 1) ניסיון watchPosition
+    watchId = navigator.geolocation.watchPosition(
+      pushPoint,
+      (err) => {
+        console.error("GPS watch failed:", err);
+        // 2) fallback: פולינג כל 8 שניות
+        if (!pollId) {
+          pollId = setInterval(() => {
+            navigator.geolocation.getCurrentPosition(
+              pushPoint,
+              (e) => console.error("GPS poll failed:", e),
+              { enableHighAccuracy: false, timeout: 15000, maximumAge: 5000 },
+            );
+          }, 8000);
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+    );
+
+    return () => {
+      if (watchId != null) navigator.geolocation.clearWatch(watchId);
+      if (pollId != null) clearInterval(pollId);
+    };
+  }, [isRideActive, isRidePaused]);
   if (isRideActive && !isRideMinimized) {
+    /* סיום רכיבה: עצירה בשרת, רענון היסטוריה, ניווט */
     /* סיום רכיבה: עצירה בשרת, רענון היסטוריה, ניווט */
     const handleFinish = async () => {
       setStopError("");
       try {
-        const res = await apiClient.post("/rides/stop");
+        /* שליחת נתיב GPS לשרת יחד עם עצירת הרכיבה */
+        const res = await apiClient.post("/rides/stop", { path: recordedPath });
         /* שמירת מזהה לצורך עדכון שם בפעולה הבאה */
         setLastRideId(res?.data?.ride?._id || null);
         setRideName("");
         setShowNameModal(true);
-        /* הקפאת הטיימר בזמן שהמודל פתוח — הניקוי יבוצע בלחיצה */
+
+        /* הקפאת הטיימר בזמן שהמודל פתוח */
         setIsRidePaused(true);
-      } catch {
+      } catch (error) {
+        console.error("Stop ride error:", error);
         setStopError("שגיאה בסיום הרכיבה.");
       }
     };
@@ -507,7 +567,8 @@ export default function RidePage({
                 try {
                   const payload = rideSelectedRoute ? { routeId: rideSelectedRoute._id || rideSelectedRoute.id } : {};
                   await apiClient.post("/rides/start", payload);
-
+                  /* איפוס מסלול מוקלט לרכיבה חדשה */
+                  setRecordedPath([]);
                   setIsRidePaused(false);
                   setIsRideMinimized(false);
                   setIsRideActive(true);
