@@ -24,10 +24,7 @@ async function startRide(req, res) {
     const owner = req.user.userId;
     const { routeId } = req.body;
 
-    if (!mongoose.isValidObjectId(routeId)) {
-        return notFound(res);
-    }
-
+    /* בדיקת רכיבה פעילה קודמת — קודמת לכל לוגיקת ניתוב */
     const active = await Ride.findOne({ owner, endedAt: null });
     if (active) {
         return res.status(409).json({
@@ -35,26 +32,43 @@ async function startRide(req, res) {
         });
     }
 
-    const route = await Route.findOne({ _id: routeId, owner });
-    if (!route) {
-        return notFound(res);
+    /* ברירת מחדל לרכיבה חופשית (ללא מסלול) */
+    let route = null;
+    let routeSnapshot = { title: "רכיבה חופשית" };
+
+    if (routeId) {
+        /* הגנה דפנסיבית — express-validator כבר מסנן, אך שומרים את הבדיקה */
+        if (!mongoose.isValidObjectId(routeId)) {
+            return res.status(400).json({
+                error: { code: "VALIDATION_ERROR", details: [{ msg: "Invalid routeId" }] }
+            });
+        }
+
+        /* חיפוש מסלול שייך למשתמש */
+        const foundRoute = await Route.findOne({ _id: routeId, owner });
+        if (!foundRoute) {
+            return notFound(res);
+        }
+
+        /* בניית snapshot מהמסלול */
+        routeSnapshot = {
+            title: foundRoute.title,
+            start: foundRoute.start,
+            end: foundRoute.end,
+            distanceKm: foundRoute.distanceKm,
+            etaMinutes: foundRoute.etaMinutes,
+            polyline: foundRoute.polyline,
+        };
+        route = foundRoute._id;
     }
 
     const ride = await Ride.create({ 
         owner, 
-        route: route._id, 
-
-        routeSnapshot: {
-            title: route.title,
-            start: route.start,
-            end: route.end,
-            distanceKm: route.distanceKm,
-            etaMinutes: route.etaMinutes,
-            polyline: route.polyline,
-        },
+        route: route ?? null,
+        routeSnapshot,
         startedAt: new Date(),
         endedAt: null,
-        durationSeconds: null,
+        durationSeconds: 0,
      });
     return res.status(201).json({ ride });
 }

@@ -8,7 +8,7 @@ router.use(authMiddleware);
 
 router.post(
     '/start',
-    body('routeId').isMongoId(),
+    body('routeId').optional({ nullable: true, checkFalsy: true }).isMongoId(),
     startRide
 );
 

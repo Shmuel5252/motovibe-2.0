@@ -84,6 +84,7 @@ function RideActiveHud({
   mapApiKey,
   isMapLoaded,
   mapLoadError,
+  stopError,
 }) {
   /* אתחול מפה: מרכז ברירת מחדל בישראל וזום ראשוני. */
   const [mapCenter, setMapCenter] = useState(ISRAEL_DEFAULT_CENTER);
@@ -236,7 +237,12 @@ function RideActiveHud({
         </div>
 
         {/* סרגל פעולות תחתון */}
-        <div className="mv-card mt-8 flex items-center justify-between gap-2 rounded-2xl px-3 py-3">
+        {/* הצגת שגיאת סיום רכיבה — inline מעל הכפתורים */}
+        {stopError && (
+          <p className="mx-auto mt-6 text-center text-xs text-rose-300">{stopError}</p>
+        )}
+
+        <div className="mv-card mt-2 flex items-center justify-between gap-2 rounded-2xl px-3 py-3">
           <Button
             variant="ghost"
             size="md"
@@ -303,12 +309,33 @@ export default function RidePage({
   mapApiKey,
   isMapLoaded,
   mapLoadError,
+  apiClient,
+  fetchHistoryFromServer,
 }) {
   /* מציגים מסלול רק אם המשתמש התחיל רכיבה מתוך מסך Routes. */
   const rideSelectedRoute =
     didStartFromRoute && selectedRoute ? selectedRoute : null;
 
+  const [startError, setStartError] = useState("");
+  const [stopError, setStopError] = useState("");
+
   if (isRideActive && !isRideMinimized) {
+    /* סיום רכיבה: עצירה בשרת, רענון היסטוריה, ניווט */
+    const handleFinish = async () => {
+      setStopError("");
+      try {
+        await apiClient.post("/rides/stop");
+        await fetchHistoryFromServer();
+        setIsRideActive(false);
+        setIsRidePaused(false);
+        setDidStartFromRoute(false);
+        setIsRideMinimized(false);
+        onNavigate("history");
+      } catch {
+        setStopError("שגיאה בסיום הרכיבה.");
+      }
+    };
+
     return (
       <RideActiveHud
         rideElapsedSeconds={rideElapsedSeconds}
@@ -318,18 +345,12 @@ export default function RidePage({
         mapApiKey={mapApiKey}
         isMapLoaded={isMapLoaded}
         mapLoadError={mapLoadError}
+        stopError={stopError}
         onMinimize={() => {
           setIsRideMinimized(true);
           onNavigate("home");
         }}
-        onFinish={() => {
-          /* בסיום רכיבה חוזרים לבית ומאפסים שיוך מסלול/מצב התחלה */
-          setIsRideActive(false);
-          setIsRidePaused(false);
-          setDidStartFromRoute(false);
-          setIsRideMinimized(false);
-          onNavigate("home");
-        }}
+        onFinish={handleFinish}
       />
     );
   }
@@ -409,15 +430,30 @@ export default function RidePage({
               טיפ: בדוק קסדה ואורות לפני יציאה
             </p>
 
+            {/* הצגת שגיאת התחלת רכיבה */}
+            {startError && (
+              <p className="mt-3 text-center text-xs text-rose-300">{startError}</p>
+            )}
+
+            {/* התחלת רכיבה: קריאת API ואז הפעלת UI */}
             <Button
               variant="primary"
               size="lg"
               className="mt-6 w-full"
-              onClick={() => {
-                /* כניסה לרכיבה פעילה תמיד מתחילה במצב לא מושהה. */
-                setIsRidePaused(false);
-                setIsRideMinimized(false);
-                setIsRideActive(true);
+              onClick={async () => {
+                setStartError("");
+                try {
+                  const payload = rideSelectedRoute ? { routeId: rideSelectedRoute._id || rideSelectedRoute.id } : {};
+                  await apiClient.post("/rides/start", payload);
+
+                  setIsRidePaused(false);
+                  setIsRideMinimized(false);
+                  setIsRideActive(true);
+                } catch (error) {
+                  // השארנו רק הדפסה שקטה מאחורי הקלעים למקרה שמשהו ישתבש בעתיד
+                  console.error("Failed to start ride:", error);
+                  setStartError("שגיאה בהתחלת רכיבה. נסה שוב.");
+                }
               }}
             >
               התחל רכיבה

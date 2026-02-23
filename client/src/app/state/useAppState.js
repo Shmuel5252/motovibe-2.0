@@ -56,7 +56,7 @@ export default function useAppState() {
     handleUnauthorized: auth.handleUnauthorized,
   });
 
-  const history = useHistory();
+  const history = useHistory({ apiClient, authToken: auth.authToken });
 
   /* ─── State: פילטרים גלובליים ─── */
   const [selectedChip, setSelectedChip] = useState("הכל");
@@ -185,6 +185,9 @@ export default function useAppState() {
 
     /* History */
     historyRides: history.historyRides,
+    historyLoading: history.historyLoading,
+    historyError: history.historyError,
+    fetchHistoryFromServer: history.fetchHistoryFromServer,
     historyFilters: history.historyFilters,
     selectedHistoryFilter: history.selectedHistoryFilter, setSelectedHistoryFilter: history.setSelectedHistoryFilter,
     isHistoryFilterMenuOpen: history.isHistoryFilterMenuOpen, setIsHistoryFilterMenuOpen: history.setIsHistoryFilterMenuOpen,

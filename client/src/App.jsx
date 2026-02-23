@@ -243,6 +243,8 @@ function App() {
                 mapApiKey={state.googleMapsApiKey}
                 isMapLoaded={state.isGoogleMapsLoaded}
                 mapLoadError={state.googleMapsLoadError}
+                apiClient={state.apiClient}
+                fetchHistoryFromServer={state.fetchHistoryFromServer}
               />
             </>
           );

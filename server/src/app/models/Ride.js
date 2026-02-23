@@ -8,7 +8,7 @@ const rideSchema = new mongoose.Schema(
             required: true,
             index: true
         },
-        route: { type: mongoose.Schema.Types.ObjectId, ref: 'Route', required: true },
+        route: { type: mongoose.Schema.Types.ObjectId, ref: 'Route', required: false, default: null },
 
         routeSnapshot: {
             title: String,
@@ -29,7 +29,7 @@ const rideSchema = new mongoose.Schema(
 
             startedAt: { type: Date, required: true },
             endedAt: { type: Date, default: null },
-            durationSeconds: { type: Number, default: null },
+            durationSeconds: { type: Number, default: 0 },
         },
     { timestamps: true }
 );

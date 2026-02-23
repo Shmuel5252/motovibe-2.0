@@ -104,13 +104,7 @@ export default function HomePage({
             variant="primary"
             size="lg"
             className="mt-6 rounded-full shadow-[0_4px_30px_rgba(16,185,129,0.3)] transition-transform hover:scale-105 sm:mt-8 sm:px-10 sm:py-3.5 sm:text-xl"
-            onClick={() => {
-              setSelectedRoute(null);
-              setIsRideActive(true);
-              setIsRidePaused(false);
-              setIsRideMinimized(false);
-              onNavigate("ride", { source: "homeStart" });
-            }}
+           onClick={() => onNavigate("ride")}
           >
             התחל רכיבה
           </Button>
