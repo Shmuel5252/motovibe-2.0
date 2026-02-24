@@ -3,9 +3,119 @@
  * רכיב Stateless: מקבל את כל הנתונים וה-Handlers כ-Props מ-App.jsx.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import {
+  GoogleMap,
+  MarkerF,
+  PolylineF,
+} from "@react-google-maps/api";
 import Button from "../app/ui/components/Button";
 import GlassCard from "../app/ui/components/GlassCard";
+
+/* ─── סגנון מפה כהה (Dark Map Style) ─── */
+const DARK_MAP_STYLE = [
+  { elementType: "geometry", stylers: [{ color: "#0f172a" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#64748b" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#0f172a" }] },
+  {
+    featureType: "road",
+    elementType: "geometry",
+    stylers: [{ color: "#1e293b" }],
+  },
+  {
+    featureType: "road",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#0f172a" }],
+  },
+  {
+    featureType: "water",
+    elementType: "geometry",
+    stylers: [{ color: "#020617" }],
+  },
+  {
+    featureType: "poi",
+    elementType: "geometry",
+    stylers: [{ color: "#1e293b" }],
+  },
+  { featureType: "transit", stylers: [{ visibility: "off" }] },
+  { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#1e293b" }] },
+];
+
+/* ─── RideHistoryMap — מפה פנימית במודל ─── */
+
+/**
+ * מציגה את מסלול הרכיבה ההיסטורי על מפה כהה עם Polyline ירוק-אמרלד,
+ * מרקרים A/B בנקודות קצה ו-fitBounds אוטומטי.
+ */
+function RideHistoryMap({ points, isMapLoaded, mapLoadError }) {
+  /* מכיל את instance המפה לצורך fitBounds */
+  const [mapInstance, setMapInstance] = useState(null);
+
+  /* התאמת תצוגה (fitBounds) למסלול לאחר טעינת המפה */
+  useEffect(() => {
+    if (!mapInstance || !window.google || points.length < 2) return;
+    try {
+      const bounds = new window.google.maps.LatLngBounds();
+      points.forEach((p) => bounds.extend(p));
+      mapInstance.fitBounds(bounds, /* padding */ 30);
+    } catch {
+      /* no-op: לא מפילים UI */
+    }
+  }, [mapInstance, points]);
+
+  if (mapLoadError) {
+    return (
+      <div className="flex h-full items-center justify-center text-xs text-slate-400">
+        שגיאה בטעינת המפה
+      </div>
+    );
+  }
+
+  if (!isMapLoaded) {
+    return (
+      <div className="flex h-full items-center justify-center text-xs text-slate-400">
+        טוען מפה...
+      </div>
+    );
+  }
+
+  /* מפה כהה + Polyline בצבע Emerald */
+  return (
+    <GoogleMap
+      /* מרכז ברירת מחדל — fitBounds ידרוס אותו בכל מקרה */
+      center={points[0] ?? { lat: 31.5, lng: 34.75 }}
+      zoom={12}
+      onLoad={(map) => setMapInstance(map)}
+      mapContainerClassName="h-full w-full"
+      options={{
+        styles: DARK_MAP_STYLE,
+        disableDefaultUI: true,
+        clickableIcons: false,
+        gestureHandling: "cooperative",
+      }}
+    >
+      {/* ציור קו המסלול */}
+      {points.length >= 2 && (
+        <PolylineF
+          path={points}
+          options={{
+            strokeColor: "#34d399",
+            strokeOpacity: 0.9,
+            strokeWeight: 4,
+          }}
+        />
+      )}
+      {/* מרקר התחלה */}
+      {points.length >= 2 && (
+        <MarkerF position={points[0]} label="A" title="התחלה" />
+      )}
+      {/* מרקר סיום */}
+      {points.length >= 2 && (
+        <MarkerF position={points[points.length - 1]} label="B" title="סיום" />
+      )}
+    </GoogleMap>
+  );
+}
 
 /**
  * באנר רכיבה פעילה — מוצג בטאבים שאינם מסך הרכיבה.
@@ -62,6 +172,10 @@ export default function HistoryPage({
   apiClient,
   fetchHistoryFromServer,
   fetchRoutesFromServer,
+  /* map props */
+  mapApiKey,
+  isMapLoaded,
+  mapLoadError,
 }) {
   /* שם לעריכה במודל הפרטים */
   const [editName, setEditName] = useState("");
@@ -302,6 +416,54 @@ export default function HistoryPage({
                     </p>
                   </div>
                 </div>
+
+                {/* ─── מפת מסלול הרכיבה ─── */}
+                {(() => {
+                  /* חישוב נקודות למסלול (path / polyline / start-end) */
+                  const raw = selectedHistoryRide?.raw || selectedHistoryRide;
+                  const path = Array.isArray(raw?.path) ? raw.path : [];
+                  const snap = raw?.routeSnapshot;
+
+                  let points = [];
+
+                  if (path.length >= 2) {
+                    /* עדיפות: נתיב GPS מוקלט */
+                    points = path.map((p) => ({ lat: p.lat, lng: p.lng }));
+                  } else if (snap?.start && snap?.end) {
+                    /* fallback: נקודות התחלה/סיום מה-snapshot */
+                    points = [
+                      { lat: snap.start.lat, lng: snap.start.lng },
+                      { lat: snap.end.lat, lng: snap.end.lng },
+                    ];
+                  }
+
+                  return (
+                    <div className="mv-card mt-4 overflow-hidden rounded-xl border border-white/10">
+                      <p className="border-b border-white/10 px-3 py-1.5 text-xs text-slate-400">
+                        מפת מסלול
+                      </p>
+                      {/* גובה: 220px מובייל, 280px דסקטופ */}
+                      <div className="relative h-[220px] sm:h-[280px]">
+                        {!mapApiKey?.trim() ? (
+                          <div className="flex h-full items-center justify-center text-xs text-slate-400">
+                            חסר מפתח Google Maps
+                          </div>
+                        ) : points.length < 2 ? (
+                          <div className="flex h-full items-center justify-center text-xs text-slate-400">
+                            אין מספיק נתונים להצגת מסלול
+                          </div>
+                        ) : (
+                          /* מפה כהה + Polyline בצבע Emerald */
+                          <RideHistoryMap
+                            points={points}
+                            isMapLoaded={isMapLoaded}
+                            mapLoadError={mapLoadError}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* שדה עריכת שם רכיבה */}
                 <div className="mv-card mt-4 rounded-xl px-3 py-3">

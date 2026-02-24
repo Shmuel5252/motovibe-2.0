@@ -16,7 +16,10 @@ export default function useAuth(apiClient) {
   const [authToken, setAuthToken] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const [showAuthScreen, setShowAuthScreen] = useState(false);
+  /* מציג מסך אימות מיד אם אין טוקן שמור — ללא רציפת flash */
+  const [showAuthScreen, setShowAuthScreen] = useState(
+    () => typeof window !== "undefined" && !window.localStorage.getItem(AUTH_TOKEN_KEY)
+  );
   const [authMode, setAuthMode] = useState("login");
   const [authName, setAuthName] = useState("");
   const [authEmail, setAuthEmail] = useState("");
@@ -41,7 +44,7 @@ export default function useAuth(apiClient) {
   // התנתקות: ניקוי טוקן ואיפוס מצב התחברות
   const handleLogout = () => {
     if (typeof window !== "undefined") {
-      window.localStorage.removeItem(AUTH_TOKEN_KEY || "mv_token");
+      window.localStorage.removeItem(AUTH_TOKEN_KEY);
       // בהתנתקות מנקים גם את פרטי המשתמש
       window.localStorage.removeItem("mv_user");
     }
@@ -150,7 +153,8 @@ export default function useAuth(apiClient) {
 
       applyAuthSuccess(token, user);
       await fetchRoutes(token);
-      onNavigate("home");
+      /* onNavigate עשוי להיות undefined כשה-AuthScreen מרונדר מחוץ ל-AppShell */
+      if (typeof onNavigate === "function") onNavigate("home");
     } catch (error) {
       console.error("Auth failed", error);
       setAuthError("התחברות נכשלה. בדוק פרטים ונסה שוב");

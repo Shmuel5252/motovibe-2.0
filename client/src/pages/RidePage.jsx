@@ -1,13 +1,13 @@
 /**
  * RidePage — מסך הרכיבה.
  * מכיל את RideActiveMap ו-RideActiveHud כרכיבי עזר פנימיים.
- * רכיב Stateless: מקבל את כל הנתונים וה-Handlers כ-Props מ-App.jsx.
  */
 
-import { useEffect, useState } from "react";
+import { useMemo, useEffect, useState, memo } from "react";
 import {
   GoogleMap,
   MarkerF,
+  PolylineF,
 } from "@react-google-maps/api";
 import Button from "../app/ui/components/Button";
 import GlassCard from "../app/ui/components/GlassCard";
@@ -15,14 +15,7 @@ import { ISRAEL_DEFAULT_CENTER, ISRAEL_DEFAULT_ZOOM } from "../app/state/useAppS
 
 /* ─── RideActiveMap ─── */
 
-/**
- * שכבת מפה לרכיבה פעילה כאשר קיים מפתח Google Maps.
- * @param {{lat: number, lng: number}} center - מרכז המפה הנוכחי.
- * @param {{lat: number, lng: number} | null} myLocation - מיקום המשתמש למרקר.
- * @param {boolean} isMapLoaded - האם Google Maps נטען.
- * @param {Error|null} mapLoadError - שגיאת טעינה.
- */
-function RideActiveMap({ center, myLocation, isMapLoaded, mapLoadError }) {
+const RideActiveMap = memo(function RideActiveMap({ center, myLocation, isMapLoaded, mapLoadError, routePath }) {
   if (mapLoadError) {
     return (
       <div className="flex h-full items-center justify-center bg-slate-900/60 text-sm text-slate-200">
@@ -39,41 +32,43 @@ function RideActiveMap({ center, myLocation, isMapLoaded, mapLoadError }) {
     );
   }
 
+  const mapOptions = useMemo(() => ({
+    disableDefaultUI: true,
+    zoomControl: true,
+    streetViewControl: false,
+    fullscreenControl: false,
+    mapTypeControl: false,
+    gestureHandling: "greedy",
+  }), []);
+
+  const polylineOptions = useMemo(() => ({
+    strokeColor: "#34d399",
+    strokeOpacity: 0.9,
+    strokeWeight: 5,
+  }), []);
+
   return (
     <GoogleMap
       center={center}
       zoom={ISRAEL_DEFAULT_ZOOM}
       mapContainerClassName="h-full w-full"
-      options={{
-        disableDefaultUI: true,
-        zoomControl: true,
-        streetViewControl: false,
-        fullscreenControl: false,
-        mapTypeControl: false,
-        gestureHandling: "greedy",
-      }}
+      options={mapOptions}
     >
-      {/* מרקר "המיקום שלי" מוצג רק לאחר הצלחת GPS. */}
       {myLocation && <MarkerF position={myLocation} title="המיקום שלי" />}
+
+      {/* ציור המסלול באמצעות PolylineF במקום DirectionsRenderer שקורס */}
+      {routePath && routePath.length > 0 && (
+        <PolylineF
+          path={routePath}
+          options={polylineOptions}
+        />
+      )}
     </GoogleMap>
   );
-}
+});
 
 /* ─── RideActiveHud ─── */
 
-/**
- * שכבת HUD לרכיבה פעילה במסך מלא.
- * כוללת טיימר גלובלי, נתוני סטטוס ופעולות שליטה תחתונות.
- * @param {number} rideElapsedSeconds - זמן רכיבה מצטבר בשניות.
- * @param {boolean} isRidePaused - האם הרכיבה במצב השהיה.
- * @param {Function} setIsRidePaused - עדכון מצב השהיה.
- * @param {Object|null} selectedRoute - מסלול שנבחר מראש.
- * @param {Function} onMinimize - מזעור HUD וחזרה למעטפת רגילה.
- * @param {Function} onFinish - סיום רכיבה פעילה.
- * @param {string} mapApiKey - מפתח Google Maps.
- * @param {boolean} isMapLoaded - האם Google Maps נטען.
- * @param {Error|null} mapLoadError - שגיאת טעינה.
- */
 function RideActiveHud({
   rideElapsedSeconds,
   isRidePaused,
@@ -86,19 +81,13 @@ function RideActiveHud({
   mapLoadError,
   stopError,
 }) {
-  /* אתחול מפה: מרכז ברירת מחדל בישראל וזום ראשוני. */
   const [mapCenter, setMapCenter] = useState(ISRAEL_DEFAULT_CENTER);
-
-  /* מרקר מיקום משתמש יוצג רק אם GPS חזר בהצלחה. */
   const [myLocation, setMyLocation] = useState(null);
-
-  /* סטטוס GPS במקרה של דחייה/חוסר תמיכה. */
   const [isGpsUnavailable, setIsGpsUnavailable] = useState(false);
+  const [routePath, setRoutePath] = useState(null); // <-- שומרים רק את מערך הנקודות
 
-  /* אם אין מפתח — לא טוענים Google Maps ומציגים הודעת fallback בעברית. */
   const hasGoogleMapsApiKey = Boolean(mapApiKey);
 
-  /* GPS חד־פעמי: ניסיון יחיד לקבלת מיקום נוכחי בזמן mount. */
   useEffect(() => {
     if (!navigator.geolocation) {
       setIsGpsUnavailable(true);
@@ -125,6 +114,51 @@ function RideActiveHud({
       },
     );
   }, []);
+
+  /* שליפת מסלול מג-Directions API כאשר נבחר מסלול והמפה נטענה */
+  useEffect(() => {
+    if (!selectedRoute) {
+      setRoutePath(null);
+      return;
+    }
+
+    if (!isMapLoaded || !window.google) return;
+
+    // ניסיון לחלץ קואורדינטות מכל פורמט אפשרי של האובייקט
+    const origin = selectedRoute?.origin || selectedRoute?.fromLatLng || selectedRoute?.start;
+    const destination = selectedRoute?.destination || selectedRoute?.toLatLng || selectedRoute?.end;
+
+    // אם אין קואורדינטות בכלל, אין טעם להמשיך לגוגל
+    if (!origin?.lat || !destination?.lat) {
+      console.warn("No coordinates found for route:", selectedRoute);
+      return;
+    }
+
+    const service = new window.google.maps.DirectionsService();
+    service.route(
+      {
+        origin: { lat: Number(origin.lat), lng: Number(origin.lng) },
+        destination: { lat: Number(destination.lat), lng: Number(destination.lng) },
+        travelMode: window.google.maps.TravelMode.DRIVING,
+      },
+      (result, status) => {
+        if (status === "OK" && result) {
+          const pathPoints = result.routes[0].overview_path.map(p => ({
+            lat: p.lat(),
+            lng: p.lng()
+          }));
+          setRoutePath(pathPoints);
+        } else {
+          console.error("Directions API failed:", status);
+          // Fallback: אם גוגל נכשל, צייר קו ישר בין ההתחלה לסוף כדי שלא יהיה ריק
+          setRoutePath([
+            { lat: Number(origin.lat), lng: Number(origin.lng) },
+            { lat: Number(destination.lat), lng: Number(destination.lng) }
+          ]);
+        }
+      },
+    );
+  }, [isMapLoaded, selectedRoute?.id || selectedRoute?._id || selectedRoute?.title]);
 
   const hours = String(Math.floor(rideElapsedSeconds / 3600)).padStart(2, "0");
   const minutes = String(
@@ -194,6 +228,7 @@ function RideActiveHud({
                   myLocation={myLocation}
                   isMapLoaded={isMapLoaded}
                   mapLoadError={mapLoadError}
+                  routePath={routePath}
                 />
               )}
             </div>
@@ -201,6 +236,7 @@ function RideActiveHud({
         </div>
 
         {/* KPI צף בסגנון נקי: 3 עמודות עם אייקון, ערך גדול ותווית קטנה */}
+        {/* ערכי placeholder — יוחלפו בנתוני GPS ומחשוב אמיתיים */}
         <div className="mx-auto mt-8 w-full max-w-3xl border-y border-white/10 py-5">
           {/* סדר עמודות לוגי: דיוק → מהירות → מרחק */}
           <div className="grid grid-cols-3 gap-3 text-center">
@@ -209,7 +245,7 @@ function RideActiveHud({
                 🧭
               </span>
               <span className="text-2xl font-semibold leading-none text-white">
-                82%
+                --
               </span>
               <span className="text-xs text-slate-400">דיוק</span>
             </div>
@@ -219,7 +255,7 @@ function RideActiveHud({
                 ⏱️
               </span>
               <span className="text-2xl font-semibold leading-none text-white">
-                84
+                --
               </span>
               <span className="text-xs text-slate-400">מהירות (קמ״ש)</span>
             </div>
@@ -229,7 +265,7 @@ function RideActiveHud({
                 📍
               </span>
               <span className="text-2xl font-semibold leading-none text-white">
-                12.4
+                --
               </span>
               <span className="text-xs text-slate-400">מרחק (ק״מ)</span>
             </div>
@@ -318,6 +354,8 @@ export default function RidePage({
 
   const [startError, setStartError] = useState("");
   const [stopError, setStopError] = useState("");
+  /* מונע לחיצה כפולה על כפתור סיום */
+  const [isStopping, setIsStopping] = useState(false);
   /* מזהה הרכיבה האחרונה שנעצרה — לשמירת שם */
   const [lastRideId, setLastRideId] = useState(null);
   const [showNameModal, setShowNameModal] = useState(false);
@@ -381,22 +419,36 @@ export default function RidePage({
   }, [isRideActive, isRidePaused]);
   if (isRideActive && !isRideMinimized) {
     /* סיום רכיבה: עצירה בשרת, רענון היסטוריה, ניווט */
-    /* סיום רכיבה: עצירה בשרת, רענון היסטוריה, ניווט */
     const handleFinish = async () => {
+      /* מניעת לחיצה כפולה */
+      if (isStopping) return;
+      setIsStopping(true);
       setStopError("");
       try {
         /* שליחת נתיב GPS לשרת יחד עם עצירת הרכיבה */
         const res = await apiClient.post("/rides/stop", { path: recordedPath });
         /* שמירת מזהה לצורך עדכון שם בפעולה הבאה */
         setLastRideId(res?.data?.ride?._id || null);
-        setRideName("");
+        /* מילוי מקדים: שם המסלול הנבחר אם קיים */
+        setRideName(rideSelectedRoute?.title || "");
         setShowNameModal(true);
-
         /* הקפאת הטיימר בזמן שהמודל פתוח */
         setIsRidePaused(true);
       } catch (error) {
-        console.error("Stop ride error:", error);
-        setStopError("שגיאה בסיום הרכיבה.");
+        /* 409 = הרכיבה כבר נעצרה בשרת — ממשיכים לזרימת UI רגילה */
+        if (error?.response?.status === 409) {
+          console.warn("Ride already stopped (409). Proceeding to finish UI.");
+          setLastRideId(null);
+          /* מילוי מקדים גם במקרה של 409 */
+          setRideName(rideSelectedRoute?.title || "");
+          setShowNameModal(true);
+          setIsRidePaused(true);
+        } else {
+          console.error("Stop ride error:", error);
+          setStopError("שגיאה בסיום הרכיבה.");
+        }
+      } finally {
+        setIsStopping(false);
       }
     };
 

@@ -104,7 +104,7 @@ export default function HomePage({
             variant="primary"
             size="lg"
             className="mt-6 rounded-full shadow-[0_4px_30px_rgba(16,185,129,0.3)] transition-transform hover:scale-105 sm:mt-8 sm:px-10 sm:py-3.5 sm:text-xl"
-           onClick={() => onNavigate("ride")}
+            onClick={() => onNavigate("ride")}
           >
             התחל רכיבה
           </Button>
@@ -174,13 +174,14 @@ export default function HomePage({
       </main>
 
       {/* פס סטטיסטיקות תחתון */}
+      {/* ערכי placeholder — יוחלפו בסטטיסטיקות אמיתיות מהשרת */}
       <section className="mv-pill mx-4 mt-6 px-4 py-3 sm:mx-6">
         <div className="flex items-center justify-between gap-2 text-sm text-slate-200">
-          <span>4 רכיבות</span>
+          <span>-- רכיבות</span>
           <span className="text-white/30">|</span>
-          <span>3:15 שעות</span>
+          <span>-- שעות</span>
           <span className="text-white/30">|</span>
-          <span>215 ק״מ</span>
+          <span>-- ק״מ</span>
         </div>
       </section>
     </div>

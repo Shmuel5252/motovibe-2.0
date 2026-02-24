@@ -51,6 +51,26 @@ function App() {
   /* כל ה-state וה-handlers של האפליקציה מגיעים מ-useAppState. */
   const state = useAppState();
 
+  /* מצב אורח: מסך אימות ללא מעטפת ניווט (TopNav / BottomNav) */
+  if (state.showAuthScreen || !state.isAuthenticated) {
+    return (
+      <AuthScreen
+        authMode={state.authMode}
+        setAuthMode={state.setAuthMode}
+        authName={state.authName}
+        setAuthName={state.setAuthName}
+        authEmail={state.authEmail}
+        setAuthEmail={state.setAuthEmail}
+        authPassword={state.authPassword}
+        setAuthPassword={state.setAuthPassword}
+        authError={state.authError}
+        setAuthError={state.setAuthError}
+        isAuthSubmitting={state.isAuthSubmitting}
+        submitAuthForm={state.submitAuthForm}
+      />
+    );
+  }
+
   return (
     <AppShell onLogout={state.handleLogout} isAuthenticated={state.isAuthenticated}>
       {({
@@ -72,32 +92,6 @@ function App() {
             onLoad={() => state.fetchBikesFromServer()}
           />
         );
-
-        /* מצב אורח: מציגים מסך אימות מינימלי עד קבלת טוקן. */
-        if (state.showAuthScreen || !state.isAuthenticated) {
-          return (
-            <>
-              {bikeTabLoader}
-              <AuthScreen
-                isRideActive={isRideActive}
-                isRideMinimized={isRideMinimized}
-                onNavigate={onNavigate}
-                authMode={state.authMode}
-                setAuthMode={state.setAuthMode}
-                authName={state.authName}
-                setAuthName={state.setAuthName}
-                authEmail={state.authEmail}
-                setAuthEmail={state.setAuthEmail}
-                authPassword={state.authPassword}
-                setAuthPassword={state.setAuthPassword}
-                authError={state.authError}
-                setAuthError={state.setAuthError}
-                isAuthSubmitting={state.isAuthSubmitting}
-                submitAuthForm={state.submitAuthForm}
-              />
-            </>
-          );
-        }
 
         /*
          * navigateTo — מעטפת ניווט עם לוגיקה של מסלול/מקור.
@@ -236,7 +230,6 @@ function App() {
                 setIsRidePaused={setIsRidePaused}
                 setIsRideMinimized={setIsRideMinimized}
                 selectedRoute={state.selectedRoute}
-                setSelectedRoute={state.setSelectedRoute}
                 didStartFromRoute={state.didStartFromRoute}
                 setDidStartFromRoute={state.setDidStartFromRoute}
                 onNavigate={navigateTo}
@@ -273,6 +266,10 @@ function App() {
                 apiClient={state.apiClient}
                 fetchHistoryFromServer={state.fetchHistoryFromServer}
                 fetchRoutesFromServer={state.fetchRoutesFromServer}
+                /* map props — pass-through בלבד */
+                mapApiKey={state.googleMapsApiKey}
+                isMapLoaded={state.isGoogleMapsLoaded}
+                mapLoadError={state.googleMapsLoadError}
               />
             </>
           );

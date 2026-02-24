@@ -23,45 +23,8 @@ export default function useRoutes({
   googleMapsLoadError,
   handleUnauthorized,
 }) {
-  /* ─── State: Routes ─── */
-  const [routes, setRoutes] = useState([
-    {
-      id: "route-1",
-      title: "רמת השרון → תל אביב",
-      from: "רמת השרון",
-      to: "תל אביב",
-      distanceKm: 42,
-      etaMin: 45,
-      routeType: "עירוני",
-      difficulty: "בינוני",
-      isTwisty: false,
-      tags: ["כביש", "לילה", "מהיר"],
-    },
-    {
-      id: "route-2",
-      title: "כביש החוף → חיפה",
-      from: "כביש החוף",
-      to: "חיפה",
-      distanceKm: 96,
-      etaMin: 70,
-      routeType: "בין־עירוני",
-      difficulty: "בינוני",
-      isTwisty: false,
-      tags: ["כביש", "לילה", "מהיר"],
-    },
-    {
-      id: "route-3",
-      title: "הרי ירושלים → בית שמש",
-      from: "הרי ירושלים",
-      to: "בית שמש",
-      distanceKm: 38,
-      etaMin: 52,
-      routeType: "נוף",
-      difficulty: "קשה",
-      isTwisty: true,
-      tags: ["כביש", "לילה", "מהיר"],
-    },
-  ]);
+  /* מסלולים נטענים מהשרת בלבד — אין נתוני demo מוקדם בקוד */
+  const [routes, setRoutes] = useState([]);
 
   /* ─── State: Routes loading ─── */
   const [isRoutesLoading, setIsRoutesLoading] = useState(false);
