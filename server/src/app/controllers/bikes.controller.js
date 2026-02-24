@@ -13,7 +13,7 @@ async function createBike(req, res) {
   if (!errors.isEmpty()) return sendValidation(res, errors);
 
   const owner = req.user.userId;
-  const { name, make, model, year, currentOdometerKm, imageUrl } = req.body;
+  const { name, make, model, year, currentOdometerKm, engineCc, imageUrl } = req.body;
 
   const bike = await Bike.create({
     owner,
@@ -22,6 +22,7 @@ async function createBike(req, res) {
     model,
     year,
     currentOdometerKm,
+    engineCc,
     imageUrl,
   });
 
@@ -62,7 +63,7 @@ async function updateMyBike(req, res) {
   }
 
   const update = {};
-  const fields = ["name", "make", "model", "year", "currentOdometerKm", "imageUrl"];
+  const fields = ["name", "make", "model", "year", "currentOdometerKm", "engineCc", "imageUrl"];
   for (const key of fields) {
     if (req.body[key] !== undefined) update[key] = req.body[key];
   }

@@ -19,6 +19,20 @@ import HistoryPage from "./pages/HistoryPage";
 import MyBikePage from "./pages/MyBikePage";
 import { AuthScreen } from "./pages/SettingsPage";
 
+/* ─── LoadingSplash ─── */
+
+/** מסך טעינה ראשוני — מוצג עד לסיום הידרציית משתמש */
+function LoadingSplash() {
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-[#020617]">
+      {/* ספינר אמרלד */}
+      <div className="h-14 w-14 animate-spin rounded-full border-4 border-emerald-500/30 border-t-emerald-400" />
+      {/* שם מותג */}
+      <p className="text-lg font-bold tracking-widest text-emerald-300">MotoVibe</p>
+    </div>
+  );
+}
+
 /* ─── BikeTabLoader ─── */
 
 /**
@@ -50,6 +64,31 @@ function BikeTabLoader({ activeTab, isAuthenticated, onLoad }) {
 function App() {
   /* כל ה-state וה-handlers של האפליקציה מגיעים מ-useAppState. */
   const state = useAppState();
+
+  /* הידרציה בעת הטעינה: Promise.all לטעינה מקבילה ו-isInitializing=false בסיום */
+  useEffect(() => {
+    if (!state.authToken) {
+      /* אין טוקן — אין מה לטעון, ישר למסך אימות */
+      state.setIsInitializing(false);
+      return;
+    }
+
+    (async () => {
+      try {
+        await Promise.all([
+          state.fetchRoutesFromServer(state.authToken),
+          state.fetchBikesFromServer(state.authToken),
+        ]);
+      } finally {
+        /* מסיים טעינה בין אם הצליח בין אם נכשל (401 יטופל ע"י האינטרספטור) */
+        state.setIsInitializing(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /* ספלש טעינה ראשוני */
+  if (state.isInitializing) return <LoadingSplash />;
 
   /* מצב אורח: מסך אימות ללא מעטפת ניווט (TopNav / BottomNav) */
   if (state.showAuthScreen || !state.isAuthenticated) {
@@ -283,9 +322,20 @@ function App() {
               isRideActive={isRideActive}
               isRideMinimized={isRideMinimized}
               onNavigate={navigateTo}
+              /* bike data */
               bikes={state.bikes}
               bikesLoading={state.bikesLoading}
               bikesError={state.bikesError}
+              createBike={state.createBike}
+              updateBike={state.updateBike}
+              deleteBike={state.deleteBike}
+              /* maintenance data */
+              maintenanceLogs={state.maintenanceLogs}
+              maintenanceLoading={state.maintenanceLoading}
+              fetchMaintenance={state.fetchMaintenance}
+              addMaintenanceLog={state.addMaintenanceLog}
+              deleteMaintenanceLog={state.deleteMaintenanceLog}
+              /* photo */
               bikePhotoPreview={state.bikePhotoPreview}
               setBikePhotoPreview={state.setBikePhotoPreview}
               bikePhotoInputRef={state.bikePhotoInputRef}

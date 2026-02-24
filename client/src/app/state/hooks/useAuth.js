@@ -13,12 +13,18 @@ const AUTH_TOKEN_KEY = "mv_token";
  */
 export default function useAuth(apiClient) {
   /* ─── State: Auth ─── */
-  const [authToken, setAuthToken] = useState("");
+  const [authToken, setAuthToken] = useState(() => window.sessionStorage.getItem("mv_token") || "");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
+  /* אתחול מקדים של currentUser מ-sessionStorage כדי למנוע flash בשם המשתמש */
+  const [currentUser, setCurrentUser] = useState(() => {
+    if (typeof window === "undefined") return null;
+    const raw = window.sessionStorage.getItem("mv_user");
+    if (!raw) return null;
+    try { return JSON.parse(raw); } catch { return null; }
+  });
   /* מציג מסך אימות מיד אם אין טוקן שמור — ללא רציפת flash */
   const [showAuthScreen, setShowAuthScreen] = useState(
-    () => typeof window !== "undefined" && !window.localStorage.getItem(AUTH_TOKEN_KEY)
+    () => typeof window !== "undefined" && !window.sessionStorage.getItem(AUTH_TOKEN_KEY)
   );
   const [authMode, setAuthMode] = useState("login");
   const [authName, setAuthName] = useState("");
@@ -32,7 +38,7 @@ export default function useAuth(apiClient) {
   /* טיפול מרכזי ב-401: ניקוי טוקן, מעבר למצב אורח ותצוגת מסך אימות. */
   const handleUnauthorized = () => {
     if (typeof window !== "undefined") {
-      window.localStorage.removeItem(AUTH_TOKEN_KEY);
+      window.sessionStorage.removeItem(AUTH_TOKEN_KEY);
     }
 
     delete apiClient.defaults.headers.common.Authorization;
@@ -44,9 +50,9 @@ export default function useAuth(apiClient) {
   // התנתקות: ניקוי טוקן ואיפוס מצב התחברות
   const handleLogout = () => {
     if (typeof window !== "undefined") {
-      window.localStorage.removeItem(AUTH_TOKEN_KEY);
+      window.sessionStorage.removeItem(AUTH_TOKEN_KEY);
       // בהתנתקות מנקים גם את פרטי המשתמש
-      window.localStorage.removeItem("mv_user");
+      window.sessionStorage.removeItem("mv_user");
     }
 
     delete apiClient.defaults.headers.common.Authorization;
@@ -63,10 +69,10 @@ export default function useAuth(apiClient) {
     }
 
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(AUTH_TOKEN_KEY, token);
+      window.sessionStorage.setItem(AUTH_TOKEN_KEY, token);
       // שמירת המשתמש כדי להציג שם אמיתי גם אחרי רענון
       if (user && typeof user === "object") {
-        window.localStorage.setItem("mv_user", JSON.stringify(user));
+        window.sessionStorage.setItem("mv_user", JSON.stringify(user));
       }
     }
 
@@ -93,7 +99,7 @@ export default function useAuth(apiClient) {
       return;
     }
 
-    const storedToken = window.localStorage.getItem(AUTH_TOKEN_KEY) || "";
+    const storedToken = window.sessionStorage.getItem(AUTH_TOKEN_KEY) || "";
     if (!storedToken) {
       setIsAuthenticated(false);
       setShowAuthScreen(true);
@@ -101,7 +107,7 @@ export default function useAuth(apiClient) {
     }
 
     // אתחול משתמש מה-localStorage כדי שהשם יוצג גם אחרי רענון
-    const rawStoredUser = window.localStorage.getItem("mv_user");
+    const rawStoredUser = window.sessionStorage.getItem("mv_user");
     if (rawStoredUser) {
       try {
         const parsedUser = JSON.parse(rawStoredUser);
@@ -109,7 +115,7 @@ export default function useAuth(apiClient) {
           setCurrentUser(parsedUser);
         }
       } catch {
-        window.localStorage.removeItem("mv_user");
+        window.sessionStorage.removeItem("mv_user");
       }
     }
 

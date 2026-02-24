@@ -34,7 +34,25 @@ export default function useAppState() {
   const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
   /* יצירת apiClient פעם אחת בלבד לשימוש בכל הקריאות לשרת. */
-  const apiClient = useMemo(() => axios.create({ baseURL: API_BASE_URL }), []);
+  const apiClient = useMemo(() => {
+    const client = axios.create({ baseURL: API_BASE_URL });
+
+    /* אינטרספטור גלובלי: 401 → ניקוי session ורענון לדף login */
+    client.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error?.response?.status === 401) {
+          if (typeof window !== "undefined") {
+            window.sessionStorage.clear();
+            window.location.reload();
+          }
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return client;
+  }, []);
 
   /* ─── Sub-Hooks ─── */
 
@@ -60,6 +78,11 @@ export default function useAppState() {
 
   /* ─── State: פילטרים גלובליים ─── */
   const [selectedChip, setSelectedChip] = useState("הכל");
+
+  /* isInitializing: אמת אם יש טוקן בעת הטעינה ועדיין מחכים לנתונים ראשוניים */
+  const [isInitializing, setIsInitializing] = useState(
+    () => typeof window !== "undefined" && !!window.sessionStorage.getItem("mv_token")
+  );
 
   /*
    * כלל תצוגה: מסלול נבחר יוצג ב־Ride רק אם ההתחלה הייתה ממסך מסלולים.
@@ -180,6 +203,16 @@ export default function useAppState() {
     bikesLoading: bikes.bikesLoading,
     bikesError: bikes.bikesError,
     fetchBikesFromServer: bikes.fetchBikesFromServer,
+    createBike: bikes.createBike,
+    updateBike: bikes.updateBike,
+    deleteBike: bikes.deleteBike,
+    /* Maintenance */
+    maintenanceLogs: bikes.maintenanceLogs,
+    maintenanceLoading: bikes.maintenanceLoading,
+    fetchMaintenance: bikes.fetchMaintenance,
+    addMaintenanceLog: bikes.addMaintenanceLog,
+    deleteMaintenanceLog: bikes.deleteMaintenanceLog,
+    /* Bike photo */
     bikePhotoPreview: bikes.bikePhotoPreview, setBikePhotoPreview: bikes.setBikePhotoPreview,
     bikePhotoInputRef: bikes.bikePhotoInputRef,
 
@@ -200,6 +233,7 @@ export default function useAppState() {
 
     /* Misc */
     selectedChip, setSelectedChip,
+    isInitializing, setIsInitializing,
     apiClient,
   };
 }

@@ -147,9 +147,64 @@ async function getMaintenanceAlerts(req, res) {
   return res.status(200).json({ alerts });
 }
 
+// PATCH /api/bikes/:id/maintenance/logs/:logId
+async function updateMaintenanceLog(req, res) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return sendValidation(res, errors);
+
+  const owner = req.user.userId;
+  const bikeId = req.params.id;
+  const logId = req.params.logId;
+
+  const bike = await assertBikeOwner(owner, bikeId);
+  if (!bike) return res.status(404).json({ error: { code: "NOT_FOUND", message: "Bike not found" } });
+
+  if (!mongoose.isValidObjectId(logId)) {
+    return res.status(404).json({ error: { code: "NOT_FOUND", message: "Log not found" } });
+  }
+
+  const update = {};
+  const fields = ["type", "date", "odometerKm", "notes", "cost"];
+  for (const key of fields) {
+    if (req.body[key] !== undefined) update[key] = req.body[key];
+  }
+
+  const log = await MaintenanceLog.findOneAndUpdate(
+    { _id: logId, bikeId, owner },
+    update,
+    { new: true }
+  );
+  if (!log) return res.status(404).json({ error: { code: "NOT_FOUND", message: "Log not found" } });
+
+  return res.status(200).json({ log });
+}
+
+// DELETE /api/bikes/:id/maintenance/logs/:logId
+async function deleteMaintenanceLog(req, res) {
+  const owner = req.user.userId;
+  const bikeId = req.params.id;
+  const logId = req.params.logId;
+
+  const bike = await assertBikeOwner(owner, bikeId);
+  if (!bike) return res.status(404).json({ error: { code: "NOT_FOUND", message: "Bike not found" } });
+
+  if (!mongoose.isValidObjectId(logId)) {
+    return res.status(404).json({ error: { code: "NOT_FOUND", message: "Log not found" } });
+  }
+
+  const result = await MaintenanceLog.deleteOne({ _id: logId, bikeId, owner });
+  if (result.deletedCount === 0) {
+    return res.status(404).json({ error: { code: "NOT_FOUND", message: "Log not found" } });
+  }
+
+  return res.status(204).send();
+}
+
 module.exports = {
   getBikeMaintenance,
   addMaintenanceLog,
+  updateMaintenanceLog,
+  deleteMaintenanceLog,
   upsertMaintenancePlan,
   getMaintenanceAlerts,
 };
