@@ -3,7 +3,7 @@
  * מכיל את RideActiveMap ו-RideActiveHud כרכיבי עזר פנימיים.
  */
 
-import { useMemo, useEffect, useState, memo } from "react";
+import { useMemo, useEffect, useState, memo, useRef } from "react";
 import {
   GoogleMap,
   MarkerF,
@@ -12,6 +12,22 @@ import {
 import Button from "../app/ui/components/Button";
 import GlassCard from "../app/ui/components/GlassCard";
 import { ISRAEL_DEFAULT_CENTER, ISRAEL_DEFAULT_ZOOM } from "../app/state/useAppState";
+
+/* ─── פונקציית עזר: Haversine — מחשבת מרחק בק"מ בין שתי נקודות GPS ─── */
+
+function haversineKm(a, b) {
+  const R = 6371;
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const sinDLat = Math.sin(dLat / 2);
+  const sinDLng = Math.sin(dLng / 2);
+  const c =
+    sinDLat * sinDLat +
+    Math.cos((a.lat * Math.PI) / 180) *
+    Math.cos((b.lat * Math.PI) / 180) *
+    sinDLng * sinDLng;
+  return R * 2 * Math.atan2(Math.sqrt(c), Math.sqrt(1 - c));
+}
 
 /* ─── RideActiveMap ─── */
 
@@ -80,6 +96,10 @@ function RideActiveHud({
   isMapLoaded,
   mapLoadError,
   stopError,
+  /* סטטיסטיקות בזמן אמת מה-GPS */
+  totalDistanceKm,
+  currentSpeedKmh,
+  gpsAccuracyPct,
 }) {
   const [mapCenter, setMapCenter] = useState(ISRAEL_DEFAULT_CENTER);
   const [myLocation, setMyLocation] = useState(null);
@@ -240,32 +260,35 @@ function RideActiveHud({
         <div className="mx-auto mt-8 w-full max-w-3xl border-y border-white/10 py-5">
           {/* סדר עמודות לוגי: דיוק → מהירות → מרחק */}
           <div className="grid grid-cols-3 gap-3 text-center">
+            {/* דיוק GPS באחוזים */}
             <div className="flex flex-col items-center gap-2">
               <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-sm">
                 🧭
               </span>
               <span className="text-2xl font-semibold leading-none text-white">
-                --
+                {gpsAccuracyPct !== null ? `${gpsAccuracyPct}%` : "--"}
               </span>
               <span className="text-xs text-slate-400">דיוק</span>
             </div>
 
+            {/* מהירות נוכחית בקמ"ש */}
             <div className="flex flex-col items-center gap-2">
               <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-sm">
                 ⏱️
               </span>
               <span className="text-2xl font-semibold leading-none text-white">
-                --
+                {currentSpeedKmh > 0 ? currentSpeedKmh : "--"}
               </span>
               <span className="text-xs text-slate-400">מהירות (קמ״ש)</span>
             </div>
 
+            {/* מרחק מצטבר בק"מ */}
             <div className="flex flex-col items-center gap-2">
               <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-sm">
                 📍
               </span>
               <span className="text-2xl font-semibold leading-none text-white">
-                --
+                {totalDistanceKm > 0 ? totalDistanceKm.toFixed(1) : "--"}
               </span>
               <span className="text-xs text-slate-400">מרחק (ק״מ)</span>
             </div>
@@ -362,6 +385,13 @@ export default function RidePage({
   const [rideName, setRideName] = useState("");
   /* נתיב GPS שהוקלט במהלך הרכיבה */
   const [recordedPath, setRecordedPath] = useState([]);
+  /* ref לנקודת ה-GPS האחרונה — לחישוב דלתא מרחק ומהירות בלי re-render */
+  const lastGpsPointRef = useRef(null);
+  /* סטטיסטיקות רכיבה בזמן אמת */
+  const [totalDistanceKm, setTotalDistanceKm] = useState(0);
+  const [currentSpeedKmh, setCurrentSpeedKmh] = useState(0);
+  /* gpsAccuracyPct: null = טרם נמדד, 0–100 = אחוז ביטחון */
+  const [gpsAccuracyPct, setGpsAccuracyPct] = useState(null);
 
   /* מעקב GPS רציף: פעיל כשהרכיבה פעילה ולא מושהית */
   /* מעקב GPS: מנסה watchPosition, ואם נכשל — fallback לפולינג עם getCurrentPosition */
@@ -379,18 +409,37 @@ export default function RidePage({
         t: new Date().toISOString(),
       };
 
-      setRecordedPath((prev) => {
-        /* מניעת נקודות כפולות/רעש */
-        const last = prev[prev.length - 1];
-        if (
-          last &&
-          Math.abs(last.lat - p.lat) < 0.00005 &&
-          Math.abs(last.lng - p.lng) < 0.00005
-        ) {
-          return prev;
+      /* עדכון דיוק GPS — ממיר מ-מטרים לאחוז ביטחון (100m → 0%, 0m → 100%) */
+      const accuracyM = pos.coords.accuracy ?? 50;
+      setGpsAccuracyPct(Math.max(0, Math.min(100, Math.round(100 - accuracyM))));
+
+      /* מניעת נקודות כפולות/רעש GPS לפי סף מרחק מינימלי */
+      const last = lastGpsPointRef.current;
+      if (
+        last &&
+        Math.abs(last.lat - p.lat) < 0.00005 &&
+        Math.abs(last.lng - p.lng) < 0.00005
+      ) {
+        return;
+      }
+
+      /* חישוב דלתא מרחק ומהירות מהנקודה הקודמת */
+      if (last) {
+        const distKm = haversineKm(last, p);
+        const timeDeltaH =
+          (new Date(p.t).getTime() - new Date(last.t).getTime()) / 3_600_000;
+        /* מסנן החלקות קטנות מ-1 מ' ומרווחי זמן אפסיים */
+        if (timeDeltaH > 0 && distKm > 0.001) {
+          setTotalDistanceKm((prev) =>
+            parseFloat((prev + distKm).toFixed(2))
+          );
+          setCurrentSpeedKmh(Math.round(distKm / timeDeltaH));
         }
-        return [...prev, p];
-      });
+      }
+
+      /* שמירת נקודה חדשה כאחרונה ועדכון מסלול מוקלט */
+      lastGpsPointRef.current = p;
+      setRecordedPath((prev) => [...prev, p]);
     };
 
     // 1) ניסיון watchPosition
@@ -463,6 +512,9 @@ export default function RidePage({
           isMapLoaded={isMapLoaded}
           mapLoadError={mapLoadError}
           stopError={stopError}
+          totalDistanceKm={totalDistanceKm}
+          currentSpeedKmh={currentSpeedKmh}
+          gpsAccuracyPct={gpsAccuracyPct}
           onMinimize={() => {
             setIsRideMinimized(true);
             onNavigate("home");
@@ -619,8 +671,12 @@ export default function RidePage({
                 try {
                   const payload = rideSelectedRoute ? { routeId: rideSelectedRoute._id || rideSelectedRoute.id } : {};
                   await apiClient.post("/rides/start", payload);
-                  /* איפוס מסלול מוקלט לרכיבה חדשה */
+                  /* איפוס מסלול מוקלט וסטטיסטיקות לרכיבה חדשה */
                   setRecordedPath([]);
+                  lastGpsPointRef.current = null;
+                  setTotalDistanceKm(0);
+                  setCurrentSpeedKmh(0);
+                  setGpsAccuracyPct(null);
                   setIsRidePaused(false);
                   setIsRideMinimized(false);
                   setIsRideActive(true);
