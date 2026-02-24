@@ -370,6 +370,7 @@ export default function RidePage({
   mapLoadError,
   apiClient,
   fetchHistoryFromServer,
+  fetchBikesFromServer,
 }) {
   /* מציגים מסלול רק אם המשתמש התחיל רכיבה מתוך מסך Routes. */
   const rideSelectedRoute =
@@ -474,8 +475,8 @@ export default function RidePage({
       setIsStopping(true);
       setStopError("");
       try {
-        /* שליחת נתיב GPS לשרת יחד עם עצירת הרכיבה */
-        const res = await apiClient.post("/rides/stop", { path: recordedPath });
+        /* שליחת נתיב GPS ומרחק לשרת יחד עם עצירת הרכיבה */
+        const res = await apiClient.post("/rides/stop", { path: recordedPath, distanceKm: totalDistanceKm });
         /* שמירת מזהה לצורך עדכון שם בפעולה הבאה */
         setLastRideId(res?.data?.ride?._id || null);
         /* מילוי מקדים: שם המסלול הנבחר אם קיים */
@@ -552,8 +553,9 @@ export default function RidePage({
                         console.error("Failed to save ride name:", err);
                       }
                     }
-                    /* רענון היסטוריה לאחר שמירה */
+                    /* רענון היסטוריה ואופנוע לאחר שמירה */
                     await fetchHistoryFromServer();
+                    if (fetchBikesFromServer) await fetchBikesFromServer();
                     onNavigate("history");
                   }}
                 >
@@ -567,6 +569,7 @@ export default function RidePage({
                     setIsRideActive(false);
                     setDidStartFromRoute(false);
                     await fetchHistoryFromServer();
+                    if (fetchBikesFromServer) await fetchBikesFromServer();
                     onNavigate("history");
                   }}
                 >

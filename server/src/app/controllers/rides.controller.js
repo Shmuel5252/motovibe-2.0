@@ -15,10 +15,11 @@ async function startRide(req, res) {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({
-            error: { 
-                code: "VALIDATION_ERROR", 
-                details: errors.array() }
-    });
+            error: {
+                code: "VALIDATION_ERROR",
+                details: errors.array()
+            }
+        });
     }
 
     const owner = req.user.userId;
@@ -62,14 +63,14 @@ async function startRide(req, res) {
         route = foundRoute._id;
     }
 
-    const ride = await Ride.create({ 
-        owner, 
+    const ride = await Ride.create({
+        owner,
         route: route ?? null,
         routeSnapshot,
         startedAt: new Date(),
         endedAt: null,
         durationSeconds: 0,
-     });
+    });
     return res.status(201).json({ ride });
 }
 
@@ -79,27 +80,37 @@ async function stopRide(req, res) {
     const ride = await Ride.findOne({ owner, endedAt: null }).sort({ startedAt: -1 });
     if (!ride) {
         return res.status(409).json({
-            error: { code: "NO_ACTIVE_RIDE", message: "No active ride to stop"  }
+            error: { code: "NO_ACTIVE_RIDE", message: "No active ride to stop" }
         });
     }
 
     const endedAt = new Date();
     const durationSeconds = Math.max(
-        0, 
+        0,
         Math.floor((endedAt.getTime() - ride.startedAt.getTime()) / 1000));
 
     ride.endedAt = endedAt;
     ride.durationSeconds = durationSeconds;
 
-    /* שמירת נתיב GPS אם נשלח מהלקוח */
-    const { path } = req.body;
+    /* שמירת נתיב GPS ומרחק אם נשלחו מהלקוח */
+    const { path, distanceKm } = req.body;
     if (Array.isArray(path) && path.length > 0) {
         /* סינון נקודות תקינות בלבד + הגבלת גודל למניעת שימוש לרעה */
         const sanitized = path
             .filter(p => typeof p.lat === 'number' && isFinite(p.lat) &&
-                         typeof p.lng === 'number' && isFinite(p.lng))
+                typeof p.lng === 'number' && isFinite(p.lng))
             .slice(-2000);
         ride.path = sanitized;
+    }
+
+    /* עדכון מד אוצץ באופנוע הראשי של המשתמש */
+    if (typeof distanceKm === 'number' && distanceKm > 0) {
+        const Bike = require("../models/Bike");
+        const bike = await Bike.findOne({ owner });
+        if (bike) {
+            bike.currentOdometerKm = parseFloat(((bike.currentOdometerKm || 0) + distanceKm).toFixed(2));
+            await bike.save();
+        }
     }
 
     await ride.save();
@@ -110,7 +121,7 @@ async function getActiveRide(req, res) {
     const owner = req.user.userId;
 
     const ride = await Ride.findOne({ owner, endedAt: null })
-    .sort({ startedAt: -1 });
+        .sort({ startedAt: -1 });
 
     return res.status(200).json({ ride: ride || null });
 }
@@ -119,8 +130,8 @@ async function getRideHistory(req, res) {
     const owner = req.user.userId;
 
     const rides = await Ride.find({ owner, endedAt: { $ne: null } })
-    .sort({ startedAt: -1 })
-    .limit(50);
+        .sort({ startedAt: -1 })
+        .limit(50);
 
     return res.status(200).json({ rides });
 }

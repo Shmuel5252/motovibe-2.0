@@ -277,6 +277,7 @@ function App() {
                 mapLoadError={state.googleMapsLoadError}
                 apiClient={state.apiClient}
                 fetchHistoryFromServer={state.fetchHistoryFromServer}
+                fetchBikesFromServer={state.fetchBikesFromServer}
               />
             </>
           );
