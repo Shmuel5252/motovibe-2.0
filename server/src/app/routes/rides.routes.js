@@ -20,6 +20,7 @@ router.get('/history', getRideHistory);
 router.patch(
     '/:id',
     body('name').optional({ checkFalsy: true }).isString().trim().isLength({ max: 60 }),
+    body('imageUrl').optional({ checkFalsy: true }).isString().trim(),
     updateRide
 );
 

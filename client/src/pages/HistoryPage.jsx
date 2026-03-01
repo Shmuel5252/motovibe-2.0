@@ -385,7 +385,15 @@ export default function HistoryPage({
                   </div>
                 </div>
 
-                <div className="h-24 overflow-hidden rounded-xl bg-linear-to-br from-slate-900/90 via-slate-800/65 to-emerald-900/30 ring-1 ring-white/10" />
+                <div className="h-24 overflow-hidden rounded-xl bg-linear-to-br from-slate-900/90 via-slate-800/65 to-emerald-900/30 ring-1 ring-white/10">
+                  {ride.imageUrl && (
+                    <img
+                      src={ride.imageUrl.startsWith('http') ? ride.imageUrl : `${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:5000'}${ride.imageUrl}`}
+                      alt="תמונת רכיבה"
+                      className="h-full w-full object-cover"
+                    />
+                  )}
+                </div>
               </div>
             </GlassCard>
           ))}
@@ -402,7 +410,7 @@ export default function HistoryPage({
             />
 
             {/* תוכן המודל: פרטים בסיסיים ופעולות */}
-            <div className="relative z-10 w-full max-w-md">
+            <div className="relative z-10 w-full max-w-md max-h-[90dvh] overflow-y-auto custom-scrollbar">
               <GlassCard title="פרטי רכיבה">
                 {/* כותרת קומפקטית: שם רכיבה + תאריך */}
                 <div className="mb-4 rounded-xl border border-white/10 bg-slate-900/40 px-3 py-2">
@@ -413,6 +421,17 @@ export default function HistoryPage({
                     {selectedHistoryRide.date}
                   </p>
                 </div>
+
+                {/* הצגת תמונת הרכיבה אם צורפה */}
+                {selectedHistoryRide.imageUrl && (
+                  <div className="mb-4 overflow-hidden rounded-xl border border-white/10">
+                    <img
+                      src={selectedHistoryRide.imageUrl.startsWith('http') ? selectedHistoryRide.imageUrl : `${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:5000'}${selectedHistoryRide.imageUrl}`}
+                      alt="תמונת רכיבה"
+                      className="h-48 w-full object-cover"
+                    />
+                  </div>
+                )}
 
                 {/* גריד סטטיסטיקות מקצועי לשלושת המדדים המרכזיים */}
                 <div className="grid grid-cols-3 gap-2">

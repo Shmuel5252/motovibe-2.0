@@ -96,6 +96,7 @@ function RideActiveHud({
   isMapLoaded,
   mapLoadError,
   stopError,
+  onCapturePhoto,
   /* סטטיסטיקות בזמן אמת מה-GPS */
   totalDistanceKm,
   currentSpeedKmh,
@@ -324,6 +325,7 @@ function RideActiveHud({
             <Button
               variant="ghost"
               size="md"
+              onClick={onCapturePhoto}
               className="h-10 w-10 rounded-xl p-0 text-base text-slate-200 focus-visible:ring-2 focus-visible:ring-emerald-300"
               aria-label="צילום רגע"
             >
@@ -382,10 +384,14 @@ export default function RidePage({
   const [stopError, setStopError] = useState("");
   /* מונע לחיצה כפולה על כפתור סיום */
   const [isStopping, setIsStopping] = useState(false);
-  /* מזהה הרכיבה האחרונה שנעצרה — לשמירת שם */
   const [lastRideId, setLastRideId] = useState(null);
   const [showNameModal, setShowNameModal] = useState(false);
   const [rideName, setRideName] = useState("");
+  const [ridePhotoFile, setRidePhotoFile] = useState(null);
+  const [ridePhotoPreview, setRidePhotoPreview] = useState(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const ridePhotoInputRef = useRef(null);
+
   /* נתיב GPS שהוקלט במהלך הרכיבה */
   const [recordedPath, setRecordedPath] = useState([]);
   /* ref לנקודת ה-GPS האחרונה — לחישוב דלתא מרחק ומהירות בלי re-render */
@@ -483,6 +489,8 @@ export default function RidePage({
         setLastRideId(res?.data?.ride?._id || null);
         /* מילוי מקדים: שם המסלול הנבחר אם קיים */
         setRideName(rideSelectedRoute?.title || "");
+        setRidePhotoFile(null);
+        setRidePhotoPreview(null);
         setShowNameModal(true);
         /* הקפאת הטיימר בזמן שהמודל פתוח */
         setIsRidePaused(true);
@@ -493,6 +501,8 @@ export default function RidePage({
           setLastRideId(null);
           /* מילוי מקדים גם במקרה של 409 */
           setRideName(rideSelectedRoute?.title || "");
+          setRidePhotoFile(null);
+          setRidePhotoPreview(null);
           setShowNameModal(true);
           setIsRidePaused(true);
         } else {
@@ -523,6 +533,12 @@ export default function RidePage({
             onNavigate("home");
           }}
           onFinish={handleFinish}
+          onCapturePhoto={() => {
+            setIsRidePaused(true);
+            setStopError(""); // Ensure no prior step error is visible
+            setShowNameModal(true);
+            setTimeout(() => ridePhotoInputRef.current?.click(), 100);
+          }}
         />
 
         {/* מודל שמירת שם רכיבה לאחר עצירה */}
@@ -530,42 +546,109 @@ export default function RidePage({
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
             <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" />
             <div className="relative z-10 w-full max-w-sm rounded-2xl border border-white/10 bg-slate-900/90 p-6 shadow-xl">
-              <p className="text-base font-semibold text-slate-100">שם לרכיבה שלך</p>
+              <p className="text-base font-semibold text-slate-100 mb-2">שמור את הרכיבה</p>
+
               <input
                 type="text"
                 value={rideName}
                 onChange={(e) => setRideName(e.target.value)}
-                placeholder="למשל: טיול ערב לחוף"
+                placeholder="שם הרכיבה (למשל טיול ערב)"
                 maxLength={60}
-                className="mt-3 w-full rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+                className="w-full rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 mb-3"
               />
-              <div className="mt-4 flex gap-2">
-                {/* שמירת שם רכיבה בשרת */}
+
+              {/* העלאת תמונה אופציונלית */}
+              <div className="mb-4">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      const file = e.target.files[0];
+                      setRidePhotoFile(file);
+                      setRidePhotoPreview(URL.createObjectURL(file));
+                    }
+                  }}
+                  className="hidden"
+                  ref={ridePhotoInputRef}
+                />
+
+                {ridePhotoPreview ? (
+                  <div className="relative mx-auto mt-2 h-32 w-full max-w-[200px] overflow-hidden rounded-xl border border-white/10">
+                    <img
+                      src={ridePhotoPreview}
+                      alt="תצוגה מקדימה לרכיבה"
+                      className="h-full w-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRidePhotoFile(null);
+                        setRidePhotoPreview(null);
+                        if (ridePhotoInputRef.current) ridePhotoInputRef.current.value = "";
+                      }}
+                      className="absolute right-2 top-2 rounded-full bg-slate-900/60 p-1 text-xs text-white hover:bg-rose-500/80"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => ridePhotoInputRef.current?.click()}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/20 bg-slate-800/30 py-4 text-sm text-slate-400 hover:bg-slate-800/50 hover:text-white"
+                  >
+                    <span>📷 הוסף תמונה לרכיבה</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                {/* שמירת שם ותמונה רכיבה בשרת */}
                 <button
                   type="button"
-                  className="flex-1 rounded-xl bg-emerald-500 py-2 text-sm font-semibold text-white hover:bg-emerald-400"
+                  disabled={isUploadingPhoto}
+                  className="flex-1 rounded-xl bg-emerald-500 py-2 text-sm font-semibold text-white hover:bg-emerald-400 disabled:opacity-50"
                   onClick={async () => {
+                    if (lastRideId) {
+                      try {
+                        let finalImageUrl = "";
+                        if (ridePhotoFile) {
+                          setIsUploadingPhoto(true);
+                          const formData = new FormData();
+                          formData.append("image", ridePhotoFile);
+                          const uploadRes = await apiClient.post("/upload", formData, {
+                            headers: { "Content-Type": "multipart/form-data" },
+                          });
+                          finalImageUrl = uploadRes.data.imageUrl;
+                        }
+
+                        const payload = {};
+                        if (rideName.trim()) payload.name = rideName.trim();
+                        if (finalImageUrl) payload.imageUrl = finalImageUrl;
+
+                        await apiClient.patch(`/rides/${lastRideId}`, payload);
+                      } catch (err) {
+                        console.error("Failed to save ride details:", err);
+                      } finally {
+                        setIsUploadingPhoto(false);
+                      }
+                    }
+
                     setShowNameModal(false);
                     setIsRideActive(false);
                     setDidStartFromRoute(false);
-                    if (lastRideId && rideName.trim()) {
-                      try {
-                        await apiClient.patch(`/rides/${lastRideId}`, { name: rideName.trim() });
-                      } catch (err) {
-                        console.error("Failed to save ride name:", err);
-                      }
-                    }
-                    /* רענון היסטוריה ואופנוע לאחר שמירה */
                     await fetchHistoryFromServer();
                     if (fetchBikesFromServer) await fetchBikesFromServer();
                     onNavigate("history");
                   }}
                 >
-                  שמור
+                  {isUploadingPhoto ? "מעלה..." : "שמור רכיבה"}
                 </button>
                 <button
                   type="button"
-                  className="flex-1 rounded-xl border border-white/10 py-2 text-sm text-slate-300 hover:text-white"
+                  disabled={isUploadingPhoto}
+                  className="flex-1 rounded-xl border border-white/10 py-2 text-sm text-slate-300 hover:text-white disabled:opacity-50"
                   onClick={async () => {
                     setShowNameModal(false);
                     setIsRideActive(false);
@@ -575,7 +658,7 @@ export default function RidePage({
                     onNavigate("history");
                   }}
                 >
-                  דלג
+                  ללא שם
                 </button>
               </div>
             </div>

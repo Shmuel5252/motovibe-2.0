@@ -87,6 +87,7 @@ function mapRideToUIShape(ride) {
     distance,
     rawSeconds,
     rawKm,
+    imageUrl: ride.imageUrl || null,
     /* snapshot מסלול — לשימוש המרה למסלול קבוע */
     routeSnapshot: ride.routeSnapshot || null,
     /* מסמך גולמי מהשרת — גישה ל-path ושדות נוספים */

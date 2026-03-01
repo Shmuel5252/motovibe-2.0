@@ -529,6 +529,17 @@ export default function RoutesPage({
             </p>
           </section>
 
+          {/* הצגת תמונת המסלול אם צורפה */}
+          {selectedRoute?.imageUrl && (
+            <section className="mt-4 overflow-hidden rounded-2xl border border-white/10">
+              <img
+                src={selectedRoute.imageUrl}
+                alt="תמונת מסלול"
+                className="h-56 w-full object-cover sm:h-72"
+              />
+            </section>
+          )}
+
           {/* בלוק מפה: תצוגת מסלול קומפקטית ורספונסיבית */}
           <section className="mt-6">
             <div className="mv-card overflow-hidden rounded-2xl border border-white/10">

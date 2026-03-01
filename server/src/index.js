@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 require("dotenv").config();
 const connectDB = require("./config/db");
 
@@ -17,13 +18,15 @@ const bikesRoutes = require("./app/routes/bikes.routes");
 
 const maintenanceRoutes = require("./app/routes/maintenance.routes");
 
-
-
+const uploadRoutes = require("./app/routes/upload.routes");
 const app = express();
 
 // Middlewares
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from the public directory (for uploads)
+app.use(express.static(path.join(__dirname, "../public")));
 
 // Routes
 app.use("/api/health", healthRoutes);
@@ -40,6 +43,8 @@ app.use("/api/directions", directionsRoutes);
 
 app.use("/api/maintenance", maintenanceRoutes);
 
+app.use("/api/upload", uploadRoutes);
+
 
 // 404 handler (minimal)
 app.use((req, res) => {
@@ -54,9 +59,9 @@ async function startServer() {
   try {
     await connectDB();
 
-app.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
-});
+    app.listen(PORT, () => {
+      console.log(`✅ Server running on http://localhost:${PORT}`);
+    });
   } catch (error) {
     console.error("❌ Failed to start server:", error.message);
     process.exit(1);

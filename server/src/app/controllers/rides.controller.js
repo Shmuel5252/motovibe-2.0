@@ -93,7 +93,11 @@ async function stopRide(req, res) {
     ride.durationSeconds = durationSeconds;
 
     /* שמירת נתיב GPS ומרחק אם נשלחו מהלקוח */
-    const { path, distanceKm } = req.body;
+    const { path, distanceKm, imageUrl } = req.body;
+
+    if (typeof imageUrl === 'string' && imageUrl.trim() !== '') {
+        ride.imageUrl = imageUrl.trim();
+    }
     if (Array.isArray(path) && path.length > 0) {
         /* סינון נקודות תקינות בלבד + הגבלת גודל למניעת שימוש לרעה */
         const sanitized = path
@@ -147,7 +151,7 @@ async function updateRide(req, res) {
 
     const owner = req.user.userId;
     const { id } = req.params;
-    const { name } = req.body;
+    const { name, imageUrl } = req.body;
 
     const ride = await Ride.findOne({ _id: id, owner });
     if (!ride) {
@@ -155,8 +159,11 @@ async function updateRide(req, res) {
     }
 
     /* עדכון השם אם סופק */
-    if (name) {
+    if (typeof name === 'string') {
         ride.name = name.trim();
+    }
+    if (typeof imageUrl === 'string') {
+        ride.imageUrl = imageUrl.trim();
     }
 
     await ride.save();

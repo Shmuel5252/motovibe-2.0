@@ -4,20 +4,22 @@ const pointSchema = new mongoose.Schema(
     {
         lat: { type: Number, required: true, min: -90, max: 90 },
         lng: { type: Number, required: true, min: -180, max: 180 },
-        label: {type: String, trim: true, maxlength: 80},
+        label: { type: String, trim: true, maxlength: 80 },
     },
     { _id: false }
 );
 
 const routeSchema = new mongoose.Schema(
     {
-        owner: { type: mongoose.Schema.Types.ObjectId, 
-            ref: 'User', 
-            required: true, 
-            index: true 
+        owner: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            required: true,
+            index: true
         },
-
         title: { type: String, required: true, trim: true, minlength: 2, maxlength: 80 },
+
+        imageUrl: { type: String, default: "" },
 
         // סוג המסלול לתצוגה וסינון באפליקציה
         routeType: {
@@ -37,9 +39,9 @@ const routeSchema = new mongoose.Schema(
         start: { type: pointSchema, required: true },
         end: { type: pointSchema, required: true },
 
-        distanceKm: {type: Number},
-        etaMinutes: {type: Number},
-        polyline: {type: String},
+        distanceKm: { type: Number },
+        etaMinutes: { type: Number },
+        polyline: { type: String },
 
         visibility: {
             type: String,
@@ -49,5 +51,5 @@ const routeSchema = new mongoose.Schema(
     },
     { timestamps: true }
 );
-        
+
 module.exports = mongoose.model('Route', routeSchema);
