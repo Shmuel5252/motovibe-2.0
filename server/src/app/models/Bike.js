@@ -12,6 +12,7 @@ const BikeSchema = new mongoose.Schema(
     currentOdometerKm: { type: Number, default: 0, min: 0 },
     engineCc: { type: Number, min: 0 },
     imageUrl: { type: String, trim: true, maxlength: 500 },
+    testValidity: { type: Date },
   },
   { timestamps: true }
 );

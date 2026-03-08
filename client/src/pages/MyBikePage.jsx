@@ -6,7 +6,7 @@
 import { useState, useEffect } from "react";
 import Button from "../app/ui/components/Button";
 import GlassCard from "../app/ui/components/GlassCard";
-import { Bike, Pencil, Trash2 } from "lucide-react";
+import { Bike, Pencil, Trash2, ChevronDown } from "lucide-react";
 
 /* ─── קבועים ─── */
 
@@ -42,6 +42,7 @@ function BikeFormModal({ initialData, onSave, onClose, isSaving, error }) {
     year: initialData?.year || "",
     currentOdometerKm: initialData?.currentOdometerKm ?? "",
     engineCc: initialData?.engineCc ?? "",
+    testValidity: initialData?.testValidity ? initialData.testValidity.split('T')[0] : "",
   });
 
   const set = (field) => (e) => setForm((p) => ({ ...p, [field]: e.target.value }));
@@ -56,6 +57,7 @@ function BikeFormModal({ initialData, onSave, onClose, isSaving, error }) {
       year: form.year ? Number(form.year) : undefined,
       currentOdometerKm: form.currentOdometerKm !== "" ? Number(form.currentOdometerKm) : undefined,
       engineCc: form.engineCc !== "" ? Number(form.engineCc) : undefined,
+      testValidity: form.testValidity || undefined,
     };
     onSave(payload);
   };
@@ -120,17 +122,28 @@ function BikeFormModal({ initialData, onSave, onClose, isSaving, error }) {
             </div>
           </div>
 
-          {/* קילומטרז' */}
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-400">קילומטרז׳ נוכחי</label>
-            <input
-              type="number"
-              value={form.currentOdometerKm}
-              onChange={set("currentOdometerKm")}
-              placeholder="12500"
-              min={0}
-              className="w-full transition-all rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 focus:border-transparent focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-            />
+          {/* קילומטרז' וטסט */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-400">קילומטרז׳ נוכחי</label>
+              <input
+                type="number"
+                value={form.currentOdometerKm}
+                onChange={set("currentOdometerKm")}
+                placeholder="12500"
+                min={0}
+                className="w-full transition-all rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 focus:border-transparent focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-400">תוקף טסט</label>
+              <input
+                type="date"
+                value={form.testValidity}
+                onChange={set("testValidity")}
+                className="w-full transition-all rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 focus:border-transparent focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              />
+            </div>
           </div>
 
           {error && <p className="text-xs text-rose-300">{error}</p>}
@@ -159,7 +172,7 @@ function BikeFormModal({ initialData, onSave, onClose, isSaving, error }) {
 
 /* ─── ServiceFormModal — הוסף רשומת תחזוקה ─── */
 
-function ServiceFormModal({ bikeOdometer, onSave, onClose, isSaving, error }) {
+function ServiceFormModal({ bikeOdometer, onSave, onClose, isSaving, error, apiClient }) {
   const todayStr = new Date().toISOString().slice(0, 10);
   const [form, setForm] = useState({
     type: SERVICE_TYPES[0],
@@ -167,9 +180,35 @@ function ServiceFormModal({ bikeOdometer, onSave, onClose, isSaving, error }) {
     odometerKm: bikeOdometer ?? "",
     cost: "",
     notes: "",
+    customServiceType: "",
+    receiptUrl: "",
   });
 
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
   const set = (field) => (e) => setForm((p) => ({ ...p, [field]: e.target.value }));
+
+  const handleReceiptUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    setUploadError("");
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      const res = await apiClient.post("/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setForm((p) => ({ ...p, receiptUrl: res.data.imageUrl }));
+    } catch {
+      setUploadError("שגיאה בהעלאת חשבונית");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -179,95 +218,158 @@ function ServiceFormModal({ bikeOdometer, onSave, onClose, isSaving, error }) {
       odometerKm: Number(form.odometerKm),
       cost: form.cost !== "" ? Number(form.cost) : undefined,
       notes: form.notes.trim() || undefined,
+      customServiceType: form.type === "אחר" ? form.customServiceType.trim() : undefined,
+      receiptUrl: form.receiptUrl || undefined,
     });
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-sm rounded-2xl border border-white/10 bg-slate-950/80 backdrop-blur-2xl p-6 shadow-2xl">
-        <p className="text-base font-semibold text-slate-100">הוסף שירות</p>
+      <div className="relative z-10 w-full max-w-sm rounded-2xl border border-white/10 bg-[#0B132B]/90 backdrop-blur-2xl p-6 shadow-2xl flex flex-col max-h-[85vh]">
+        <p className="text-base font-semibold text-slate-100 shrink-0 mb-4">הוסף שירות</p>
 
-        <form onSubmit={handleSubmit} className="mt-4 space-y-3">
-          {/* סוג */}
-          <div>
-            <label className="mb-1 block text-xs text-slate-400">סוג תחזוקה</label>
-            <select
-              value={form.type}
-              onChange={set("type")}
-              className="w-full rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2 text-sm text-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
-            >
-              {SERVICE_TYPES.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-          </div>
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          {/* גוף נגלל */}
+          <div className="flex-1 overflow-y-auto pr-2 pb-32 space-y-4 custom-scrollbar">
+            {/* סוג */}
+            <div className="relative">
+              <label className="mb-1 block text-xs text-slate-400">סוג תחזוקה</label>
 
-          {/* תאריך + קילומטרז' */}
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="mb-1 block text-xs text-slate-400">תאריך</label>
-              <input
-                required
-                type="date"
-                value={form.date}
-                onChange={set("date")}
-                className="w-full rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2 text-sm text-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
-              />
+              <button
+                type="button"
+                onClick={() => setIsDropdownOpen((prev) => !prev)}
+                className="w-full relative bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-100 flex justify-between items-center cursor-pointer focus:outline-none focus:bg-white/10 focus-visible:ring-2 focus-visible:ring-emerald-300 transition-all text-right"
+              >
+                {form.type}
+                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${isDropdownOpen ? "rotate-180" : ""}`} />
+              </button>
+
+              {isDropdownOpen && (
+                <ul className="absolute left-0 right-0 w-full mt-2 z-[999] bg-[#0B132B]/95 backdrop-blur-2xl border border-white/10 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] overflow-hidden max-h-[200px] overflow-y-auto custom-scrollbar">
+                  {SERVICE_TYPES.map((t) => (
+                    <li
+                      key={t}
+                      onClick={() => {
+                        setForm((prev) => ({ ...prev, type: t }));
+                        setIsDropdownOpen(false);
+                      }}
+                      className="px-4 py-3 text-sm text-white hover:bg-white/10 cursor-pointer transition-colors"
+                    >
+                      {t}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
+
+            {/* Custom Type */}
+            {form.type === "אחר" && (
+              <div>
+                <input
+                  required
+                  type="text"
+                  placeholder="פרט את סוג הטיפול..."
+                  value={form.customServiceType}
+                  onChange={set("customServiceType")}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:bg-white/10 focus-visible:ring-2 focus-visible:ring-emerald-300 transition-all"
+                />
+              </div>
+            )}
+
+            {/* תאריך + קילומטרז' */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-xs text-slate-400">תאריך</label>
+                <input
+                  required
+                  type="date"
+                  value={form.date}
+                  onChange={set("date")}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:bg-white/10 focus-visible:ring-2 focus-visible:ring-emerald-300 transition-all"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-slate-400">קילומטרז׳</label>
+                <input
+                  required
+                  type="number"
+                  value={form.odometerKm}
+                  onChange={set("odometerKm")}
+                  min={0}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:bg-white/10 focus-visible:ring-2 focus-visible:ring-emerald-300 transition-all"
+                />
+              </div>
+            </div>
+
+            {/* עלות */}
             <div>
-              <label className="mb-1 block text-xs text-slate-400">קילומטרז׳</label>
+              <label className="mb-1 block text-xs text-slate-400">עלות (₪)</label>
               <input
-                required
                 type="number"
-                value={form.odometerKm}
-                onChange={set("odometerKm")}
+                value={form.cost}
+                onChange={set("cost")}
                 min={0}
-                className="w-full rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+                placeholder="אופציונלי"
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:bg-white/10 focus-visible:ring-2 focus-visible:ring-emerald-300 transition-all"
               />
             </div>
+
+            {/* הערות */}
+            <div>
+              <label className="mb-1 block text-xs text-slate-400">הערות</label>
+              <textarea
+                value={form.notes}
+                onChange={set("notes")}
+                maxLength={400}
+                rows={2}
+                placeholder="פרטים נוספים..."
+                className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:bg-white/10 focus-visible:ring-2 focus-visible:ring-emerald-300 transition-all"
+              />
+            </div>
+
+            {/* העלאת קבלה */}
+            <div className="pt-1">
+              <label className="mb-1.5 block text-xs text-slate-400">חשבונית מעקב (אופציונלי)</label>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs bg-white/5 border border-white/10 py-1.5"
+                  onClick={(e) => { e.preventDefault(); document.getElementById('receipt-upload').click(); }}
+                  disabled={isUploading}
+                >
+                  {isUploading ? "מעלה..." : "📸 הוסף צילום חשבונית"}
+                </Button>
+                {form.receiptUrl && <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1">✓ הועלה</span>}
+              </div>
+              <input
+                type="file"
+                id="receipt-upload"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handleReceiptUpload}
+              />
+              {uploadError && <p className="text-xs text-rose-400 mt-1">{uploadError}</p>}
+            </div>
+
+            {error && <p className="text-xs text-rose-300">{error}</p>}
           </div>
 
-          {/* עלות */}
-          <div>
-            <label className="mb-1 block text-xs text-slate-400">עלות (₪)</label>
-            <input
-              type="number"
-              value={form.cost}
-              onChange={set("cost")}
-              min={0}
-              placeholder="אופציונלי"
-              className="w-full rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
-            />
-          </div>
-
-          {/* הערות */}
-          <div>
-            <label className="mb-1 block text-xs text-slate-400">הערות</label>
-            <textarea
-              value={form.notes}
-              onChange={set("notes")}
-              maxLength={400}
-              rows={2}
-              placeholder="פרטים נוספים..."
-              className="w-full resize-none rounded-xl border border-white/10 bg-slate-800/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
-            />
-          </div>
-
-          {error && <p className="text-xs text-rose-300">{error}</p>}
-
-          <div className="flex gap-2">
+          {/* פעולות שמירה - קבוע בתחתית (Sticky Footer) */}
+          <div className="mt-auto pt-4 border-t border-white/10 flex gap-3 shrink-0">
             <button
               type="submit"
               disabled={isSaving}
-              className="flex-1 rounded-xl bg-emerald-500 py-2 text-sm font-semibold text-white hover:bg-emerald-400 disabled:opacity-50"
+              className="flex-1 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-500/20 hover:scale-[1.02] transition-all disabled:opacity-50"
             >
               {isSaving ? "שומר..." : "הוסף"}
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-xl border border-white/10 py-2 text-sm text-slate-300 hover:text-white"
+              className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-medium text-slate-300 transition-all hover:bg-white/10 hover:text-white"
             >
               ביטול
             </button>
@@ -286,7 +388,9 @@ function MaintenanceLogRow({ log, onDelete }) {
     <div className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/5 backdrop-blur-xl shadow-sm px-3 py-2.5">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-slate-100">{log.type}</span>
+          <span className="text-sm font-semibold text-slate-100">
+            {log.type === "אחר" && log.customServiceType ? log.customServiceType : log.type}
+          </span>
           <span className="text-xs text-emerald-400 font-bold">{date}</span>
         </div>
         <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-400">
@@ -294,11 +398,16 @@ function MaintenanceLogRow({ log, onDelete }) {
           {log.cost != null && <span><span className="text-emerald-400 font-bold">₪{log.cost}</span></span>}
         </div>
         {log.notes && <p className="mt-1 text-xs text-slate-400">{log.notes}</p>}
+        {log.receiptUrl && (
+          <a href={imgSrc(log.receiptUrl)} target="_blank" rel="noopener noreferrer" className="mt-2 text-xs font-semibold text-emerald-300 hover:text-emerald-200 transition-colors inline-flex items-center gap-1 bg-white/5 px-2 py-1 rounded-lg border border-emerald-500/20 w-fit">
+            <span className="text-lg leading-none">🧾</span> צפה בחשבונית
+          </a>
+        )}
       </div>
       <button
         type="button"
         onClick={() => onDelete(log._id)}
-        className="shrink-0 rounded-lg p-1 text-slate-500 hover:text-rose-300 focus-visible:ring-2 focus-visible:ring-rose-400"
+        className="shrink-0 rounded-lg p-2 text-slate-500 hover:bg-white/5 hover:text-rose-400 transition focus-visible:ring-2 focus-visible:ring-rose-400"
         aria-label="מחק רשומה"
       >
         <Trash2 className="w-4 h-4" />
@@ -542,6 +651,19 @@ export default function MyBikePage({
                   {bike.engineCc && <span>{bike.engineCc} סמ״ק</span>}
                 </div>
 
+                {bike.testValidity && (
+                  <div className="mt-2 text-xs font-semibold">
+                    <span className="text-gray-400">תוקף טסט: </span>
+                    <span className={
+                      new Date(bike.testValidity) <= new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+                        ? "text-rose-400"
+                        : "text-emerald-400"
+                    }>
+                      {new Date(bike.testValidity).toLocaleDateString("he-IL")}
+                    </span>
+                  </div>
+                )}
+
                 {/* תצוגת תמונה / placeholder */}
                 <div className="relative mt-4 h-48 md:h-64 overflow-hidden rounded-2xl border border-white/10 bg-linear-to-br from-slate-900/90 via-slate-800/60 to-emerald-900/25">
                   <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.08)_1px,transparent_1px)] bg-size-[24px_24px]" />
@@ -685,6 +807,7 @@ export default function MyBikePage({
             onClose={() => setShowServiceForm(false)}
             isSaving={serviceFormSaving}
             error={serviceFormError}
+            apiClient={apiClient}
           />
         )
       }

@@ -11,6 +11,8 @@ const MaintenanceLogSchema = new mongoose.Schema(
 
     notes: { type: String, trim: true, maxlength: 400 },
     cost: { type: Number, min: 0 },
+    customServiceType: { type: String, trim: true, maxlength: 60 },
+    receiptUrl: { type: String, trim: true, maxlength: 500 },
   },
   { timestamps: true }
 );
