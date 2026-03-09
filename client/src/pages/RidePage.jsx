@@ -1,6 +1,7 @@
 /**
  * RidePage — מסך הרכיבה.
- * מכיל את RideActiveMap ו-RideActiveHud כרכיבי עזר פנימיים.
+ * מכיל את RideActiveMap ו-RideActiveHud כרכיבי עזר פנימיים,
+ * ומשתמש ב-RideControlCenter לשלב טרום-הרכיבה.
  */
 
 import { useMemo, useEffect, useState, memo, useRef } from "react";
@@ -13,6 +14,8 @@ import Button from "../app/ui/components/Button";
 import GlassCard from "../app/ui/components/GlassCard";
 import { ISRAEL_DEFAULT_CENTER, ISRAEL_DEFAULT_ZOOM } from "../app/state/useAppState";
 import { Bike } from "lucide-react";
+import RideControlCenter from "./RideControlCenter";
+import RideActiveCockpit from "./RideActiveCockpit";
 
 /* ─── פונקציית עזר: Haversine — מחשבת מרחק בק"מ בין שתי נקודות GPS ─── */
 
@@ -572,12 +575,11 @@ export default function RidePage({
 
     return (
       <>
-        <RideActiveHud
+        <RideActiveCockpit
           rideElapsedSeconds={rideElapsedSeconds}
           isRidePaused={isRidePaused}
           setIsRidePaused={setIsRidePaused}
           selectedRoute={rideSelectedRoute}
-          mapApiKey={mapApiKey}
           isMapLoaded={isMapLoaded}
           mapLoadError={mapLoadError}
           stopError={stopError}
@@ -592,7 +594,7 @@ export default function RidePage({
           onFinish={handleFinish}
           onCapturePhoto={() => {
             setIsRidePaused(true);
-            setStopError(""); // Ensure no prior step error is visible
+            setStopError("");
             setShowNameModal(true);
             setTimeout(() => ridePhotoInputRef.current?.click(), 100);
           }}
@@ -660,12 +662,12 @@ export default function RidePage({
                 )}
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2">
                 {/* שמירת שם ותמונה רכיבה בשרת */}
                 <button
                   type="button"
                   disabled={isUploadingPhoto}
-                  className="flex-1 rounded-xl bg-emerald-500 py-2 text-sm font-semibold text-white hover:bg-emerald-400 disabled:opacity-50"
+                  className="w-full rounded-xl bg-emerald-500 py-3 text-sm font-bold tracking-wide text-white hover:bg-emerald-400 disabled:opacity-50"
                   onClick={async () => {
                     if (lastRideId) {
                       try {
@@ -702,21 +704,48 @@ export default function RidePage({
                 >
                   {isUploadingPhoto ? "מעלה..." : "שמור רכיבה"}
                 </button>
-                <button
-                  type="button"
-                  disabled={isUploadingPhoto}
-                  className="flex-1 rounded-xl border border-white/10 py-2 text-sm text-slate-300 hover:text-white disabled:opacity-50"
-                  onClick={async () => {
-                    setShowNameModal(false);
-                    setIsRideActive(false);
-                    setDidStartFromRoute(false);
-                    await fetchHistoryFromServer();
-                    if (fetchBikesFromServer) await fetchBikesFromServer();
-                    onNavigate("routes");
-                  }}
-                >
-                  ללא שם
-                </button>
+
+                {/* Secondary actions: Save Without Name / Discard */}
+                <div className="flex w-full gap-2">
+                  <button
+                    type="button"
+                    disabled={isUploadingPhoto}
+                    className="flex-1 rounded-xl border border-white/10 bg-slate-800/40 py-2.5 text-sm font-semibold text-slate-300 transition-colors hover:bg-slate-800/80 hover:text-white disabled:opacity-50"
+                    onClick={async () => {
+                      setShowNameModal(false);
+                      setIsRideActive(false);
+                      setDidStartFromRoute(false);
+                      await fetchHistoryFromServer();
+                      if (fetchBikesFromServer) await fetchBikesFromServer();
+                      onNavigate("routes");
+                    }}
+                  >
+                    ללא שם
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isUploadingPhoto}
+                    className="flex-1 rounded-xl border border-red-500/20 bg-red-500/5 py-2.5 text-sm font-semibold text-red-400 transition-colors hover:bg-red-500/10 disabled:opacity-50"
+                    onClick={() => {
+                      /* Completely reset the active ride state locally */
+                      setShowNameModal(false);
+                      setIsRideActive(false);
+                      setDidStartFromRoute(false);
+                      setRecordedPath([]);
+                      setTotalDistanceKm(0);
+                      setCurrentSpeedKmh(0);
+                      setMaxSpeedKmh(0);
+                      setGpsAccuracyPct(null);
+                      lastGpsPointRef.current = null;
+
+                      /* Return the user to the initial Ride page without making any API calls */
+                      onNavigate("home");
+                    }}
+                  >
+                    מחק רכיבה
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -726,112 +755,43 @@ export default function RidePage({
 
   }
 
+  /* ─── handler להתחלת רכיבה — מועבר ל-RideControlCenter ─── */
+  const handleStartRide = async () => {
+    setStartError("");
+    try {
+      let payload = {};
+      if (rideSelectedRoute) {
+        const routeId = rideSelectedRoute?._id || rideSelectedRoute?.id;
+        if (routeId) payload = { routeId };
+      }
+      await apiClient.post("/rides/start", payload);
+      /* איפוס סטטיסטיקות לרכיבה חדשה */
+      setRecordedPath([]);
+      lastGpsPointRef.current = null;
+      setTotalDistanceKm(0);
+      setCurrentSpeedKmh(0);
+      setMaxSpeedKmh(0);
+      setGpsAccuracyPct(null);
+      setIsRidePaused(false);
+      setIsRideMinimized(false);
+      setIsRideActive(true);
+    } catch (error) {
+      console.error("Failed to start ride:", error);
+      setStartError("שגיאה בהתחלת רכיבה. נסה שוב.");
+    }
+  };
+
   return (
-    <>
-      <div className="mx-auto flex h-[100dvh] w-full max-w-6xl flex-col overflow-hidden px-4 pb-6 pt-5 sm:px-6">
-        <main className="mt-8 flex flex-1 flex-col items-center justify-start min-h-0 pt-12">
-          {/* מסך מוכנות לרכיבה לפני כניסה ל־HUD */}
-          <div className="w-full max-w-xl text-center bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-2xl flex flex-col items-center">
-
-            <h2 className="text-3xl font-bold tracking-wide text-white mb-2">מוכן לרכיבה?</h2>
-            <p className="text-sm text-gray-300 mb-6 font-medium">
-              הפעל מצב רכיבה פעילה לממשק מלא ללא ניווט.
-            </p>
-
-            {/* שורת סטטוס קצרה לפני יציאה לרכיבה */}
-            <div className="flex flex-wrap items-center justify-center gap-3 w-full mb-6">
-              <div className="flex items-center gap-2 rounded-full border border-white/5 bg-white/10 px-3 py-1.5 text-xs text-emerald-200 backdrop-blur-md shadow-sm">
-                <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-                <span className="font-semibold">GPS: מוכן</span>
-              </div>
-              <div className="rounded-full border border-white/5 bg-white/10 px-3 py-1.5 text-xs font-semibold text-slate-200 backdrop-blur-md shadow-sm">
-                דיוק משוער: גבוה
-              </div>
-            </div>
-
-            {/* בחירת מסלול אופציונלית - Segmented Control */}
-            <div className="w-full bg-black/40 p-1 rounded-xl flex items-center mb-4 border border-white/5">
-              <button
-                type="button"
-                onClick={() => setDidStartFromRoute(false)}
-                className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all duration-300 ${!rideSelectedRoute
-                  ? "bg-[#1a2332] text-white shadow-md border border-white/5"
-                  : "text-gray-400 hover:text-gray-200"
-                  }`}
-              >
-                ללא מסלול
-              </button>
-              <button
-                type="button"
-                onClick={() => onNavigate("routes")}
-                className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all duration-300 ${rideSelectedRoute
-                  ? "bg-[#1a2332] text-white shadow-md border border-white/5"
-                  : "text-gray-400 hover:text-gray-200"
-                  }`}
-              >
-                בחר מסלול
-              </button>
-            </div>
-
-            {/* אינדיקציה למסלול שנבחר */}
-            {rideSelectedRoute && (
-              <div className="w-full rounded-2xl border border-white/5 bg-white/5 px-4 py-3 text-right backdrop-blur-sm shadow-sm mb-4">
-                <p className="text-emerald-300 font-bold mb-0.5 text-sm">
-                  {rideSelectedRoute.title}
-                </p>
-                <p className="text-[11px] font-medium text-slate-400">
-                  {rideSelectedRoute.from} → {rideSelectedRoute.to}
-                </p>
-              </div>
-            )}
-
-            {/* הערת בטיחות לפני התחלת רכיבה */}
-            <p className="mt-2 text-xs font-medium text-slate-400 w-full text-center flex items-center justify-center gap-1.5">
-              <Bike className="w-4 h-4 text-emerald-400 opacity-80" /> טיפ: בדוק קסדה ואורות לפני יציאה
-            </p>
-
-            {/* הצגת שגיאת התחלת רכיבה */}
-            {startError && (
-              <p className="mt-3 w-full text-center text-xs font-semibold text-rose-300">{startError}</p>
-            )}
-
-            {/* התחלת רכיבה: קריאת API ואז הפעלת UI */}
-            <button
-              type="button"
-              className="mt-6 w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 py-4 text-xl font-bold text-white shadow-xl shadow-emerald-500/20 transition-all hover:scale-[1.02] active:scale-95"
-              onClick={async () => {
-                setStartError("");
-
-                try {
-                  let payload = {};
-                  if (rideSelectedRoute) {
-                    const routeId = rideSelectedRoute?._id || rideSelectedRoute?.id;
-                    if (routeId) payload = { routeId };
-                  }
-
-                  await apiClient.post("/rides/start", payload);
-
-                  /* איפוס מסלול מוקלט וסטטיסטיקות לרכיבה חדשה */
-                  setRecordedPath([]);
-                  lastGpsPointRef.current = null;
-                  setTotalDistanceKm(0);
-                  setCurrentSpeedKmh(0);
-                  setMaxSpeedKmh(0);
-                  setGpsAccuracyPct(null);
-                  setIsRidePaused(false);
-                  setIsRideMinimized(false);
-                  setIsRideActive(true);
-                } catch (error) {
-                  console.error("Failed to start ride:", error);
-                  setStartError("שגיאה בהתחלת רכיבה. נסה שוב.");
-                }
-              }}
-            >
-              התחל רכיבה
-            </button>
-          </div>
-        </main>
-      </div>
-    </>
+    <RideControlCenter
+      onStartRide={handleStartRide}
+      onSelectRoute={() => onNavigate("routes")}
+      selectedRoute={selectedRoute}
+      didStartFromRoute={didStartFromRoute}
+      setDidStartFromRoute={setDidStartFromRoute}
+      startError={startError}
+      lastRide={null}
+      isMapLoaded={isMapLoaded}
+      mapLoadError={mapLoadError}
+    />
   );
 }
