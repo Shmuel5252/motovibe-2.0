@@ -19,6 +19,7 @@ const bikesRoutes = require("./app/routes/bikes.routes");
 const maintenanceRoutes = require("./app/routes/maintenance.routes");
 
 const uploadRoutes = require("./app/routes/upload.routes");
+const eventsRoutes = require("./app/routes/events.routes");
 const app = express();
 
 // Middlewares
@@ -45,6 +46,7 @@ app.use("/api/maintenance", maintenanceRoutes);
 
 app.use("/api/upload", uploadRoutes);
 
+app.use("/api/events", eventsRoutes);
 
 // 404 handler (minimal)
 app.use((req, res) => {

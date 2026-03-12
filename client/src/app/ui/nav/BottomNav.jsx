@@ -12,7 +12,7 @@ function BottomNav({ items, activeTab, onNavigate }) {
     <nav className="fixed inset-x-0 bottom-0 z-40 md:hidden" dir="rtl">
       {/* glassmorphic pill container */}
       <div className="mx-3 mb-3 overflow-hidden rounded-2xl border border-white/10 bg-[#0B132B]/80 backdrop-blur-md shadow-[0_-4px_30px_rgba(0,0,0,0.4)]">
-        <ul className="grid grid-cols-4">
+        <ul className="grid grid-cols-5">
           {items.map((item) => {
             const isActive = item.key === activeTab;
             return (
@@ -47,7 +47,9 @@ function BottomNav({ items, activeTab, onNavigate }) {
                   <span
                     className={[
                       "h-1 w-1 rounded-full transition-all duration-200",
-                      isActive ? "bg-emerald-400 scale-100" : "scale-0 bg-transparent",
+                      isActive
+                        ? "bg-emerald-400 scale-100"
+                        : "scale-0 bg-transparent",
                     ].join(" ")}
                   />
                 </button>

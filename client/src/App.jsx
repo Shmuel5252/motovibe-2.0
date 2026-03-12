@@ -17,6 +17,7 @@ import RoutesPage from "./pages/RoutesPage";
 import ActivityPage from "./pages/ActivityPage";
 import RidePage from "./pages/RidePage";
 import MyBikePage from "./pages/MyBikePage";
+import CommunityHubPage from "./pages/CommunityHubPage";
 import { AuthScreen } from "./pages/SettingsPage";
 
 /* ─── LoadingSplash ─── */
@@ -28,7 +29,9 @@ function LoadingSplash() {
       {/* ספינר אמרלד */}
       <div className="h-14 w-14 animate-spin rounded-full border-4 border-emerald-500/30 border-t-emerald-400" />
       {/* שם מותג */}
-      <p className="text-lg font-bold tracking-widest text-emerald-300">MotoVibe</p>
+      <p className="text-lg font-bold tracking-widest text-emerald-300">
+        MotoVibe
+      </p>
     </div>
   );
 }
@@ -111,7 +114,10 @@ function App() {
   }
 
   return (
-    <AppShell onLogout={state.handleLogout} isAuthenticated={state.isAuthenticated}>
+    <AppShell
+      onLogout={state.handleLogout}
+      isAuthenticated={state.isAuthenticated}
+    >
       {({
         activeTab,
         isRideActive,
@@ -213,7 +219,9 @@ function App() {
                   setIsRoutesFilterMenuOpen={state.setIsRoutesFilterMenuOpen}
                   routesFilterOptions={state.routesFilterOptions}
                   getRouteLengthCategory={state.getRouteLengthCategory}
-                  getAdjustedDifficultyForTwisty={state.getAdjustedDifficultyForTwisty}
+                  getAdjustedDifficultyForTwisty={
+                    state.getAdjustedDifficultyForTwisty
+                  }
                   getRoutePolylinePath={state.getRoutePolylinePath}
                   isValidMapPoint={state.isValidMapPoint}
                   getSafePolylinePath={state.getSafePolylinePath}
@@ -292,7 +300,9 @@ function App() {
                 setIsRoutesFilterMenuOpen={state.setIsRoutesFilterMenuOpen}
                 routesFilterOptions={state.routesFilterOptions}
                 getRouteLengthCategory={state.getRouteLengthCategory}
-                getAdjustedDifficultyForTwisty={state.getAdjustedDifficultyForTwisty}
+                getAdjustedDifficultyForTwisty={
+                  state.getAdjustedDifficultyForTwisty
+                }
                 getRoutePolylinePath={state.getRoutePolylinePath}
                 isValidMapPoint={state.isValidMapPoint}
                 getSafePolylinePath={state.getSafePolylinePath}
@@ -351,6 +361,20 @@ function App() {
                 fetchHistoryFromServer={state.fetchHistoryFromServer}
               />
             </>
+          );
+        }
+
+        if (activeTab === "community") {
+          return (
+            <CommunityHubPage
+              apiClient={state.apiClient}
+              authToken={state.authToken}
+              onViewRoute={(route) => {
+                state.setSelectedRoute(route);
+                state.setRoutesView("routeDetails");
+                onNavigate("routes");
+              }}
+            />
           );
         }
 
