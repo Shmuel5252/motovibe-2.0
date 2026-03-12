@@ -1029,42 +1029,27 @@ export default function RideActiveCockpit({
         <div
             className="relative flex h-[100dvh] w-full flex-col overflow-hidden bg-transparent"
         >
-            {/* ─── 1. TOP SECTION (Map + Weather) ─── */}
-            <div className="flex-none relative w-full h-[280px] p-5 pb-2">
-                <MapPreview
-                    isMapLoaded={isMapLoaded}
-                    mapLoadError={mapLoadError}
-                    selectedRoute={selectedRoute}
-                    recordedPath={recordedPath}
-                    customContainerClass="relative w-full h-full"
-                    customContainerStyle={{}}
-                    innerClassName="rounded-3xl overflow-hidden border border-white/10 shadow-lg relative w-full h-full"
+            {/* ─── 1. TOP SECTION (StatusBar & Weather) ─── */}
+            <div className="flex-none relative w-full z-20">
+                <StatusBar
+                    rideElapsedSeconds={rideElapsedSeconds}
+                    gpsAccuracyPct={gpsAccuracyPct}
+                    onMinimize={onMinimize}
+                    weather={weather}
                 />
-
-                {/* ─── Status Bar & Weather (Overlaid on top left/right of map) ─── */}
-                <div className="absolute top-0 inset-x-0 z-20 pointer-events-none">
-                    <div className="pointer-events-auto">
-                        <StatusBar
-                            rideElapsedSeconds={rideElapsedSeconds}
-                            gpsAccuracyPct={gpsAccuracyPct}
-                            onMinimize={onMinimize}
-                            weather={weather}
-                        />
-                    </div>
-                </div>
             </div>
 
+            {/* ─── 2. MAIN DATA HUB (Speedometer + Telemetry) ─── */}
             <div className="flex-1 flex flex-col justify-center relative z-10 w-full px-1">
-
-                {/* ─── 2. Speedometer ─── */}
+                {/* Speedometer */}
                 <div className="flex justify-center pt-2 pb-1 relative z-10 w-full">
                     <Speedometer speedKmh={currentSpeedKmh} maxSpeedKmh={maxSpeedKmh} rideElapsedSeconds={rideElapsedSeconds} />
                 </div>
 
-                {/* ─── Route chip (if active) ─── */}
+                {/* Route chip (if active) */}
                 {selectedRoute && (
                     <div
-                        className="mx-5 mb-2 flex items-center gap-3 rounded-md border px-3 py-2 sm:mx-6"
+                        className="mx-5 mb-4 flex items-center gap-3 rounded-md border px-3 py-2 sm:mx-6"
                         style={{ borderColor: "#1e293b", background: "#0d1117" }}
                         dir="rtl"
                     >
@@ -1078,7 +1063,7 @@ export default function RideActiveCockpit({
                     </div>
                 )}
 
-                {/* ─── 3. Telemetry HUD ─── */}
+                {/* Telemetry HUD */}
                 <div className="flex-none pb-4 shrink-0">
                     <TelemetryHUD
                         totalDistanceKm={totalDistanceKm}
@@ -1088,7 +1073,20 @@ export default function RideActiveCockpit({
                 </div>
             </div>
 
-            {/* ─── 5. Bottom Action Bar ─── */}
+            {/* ─── 3. BOTTOM SECTION (Map Preview) ─── */}
+            <div className="flex-none relative w-full h-[220px] p-5 pt-2">
+                <MapPreview
+                    isMapLoaded={isMapLoaded}
+                    mapLoadError={mapLoadError}
+                    selectedRoute={selectedRoute}
+                    recordedPath={recordedPath}
+                    customContainerClass="relative w-full h-full"
+                    customContainerStyle={{}}
+                    innerClassName="rounded-3xl overflow-hidden border border-white/10 shadow-lg relative w-full h-full"
+                />
+            </div>
+
+            {/* ─── 4. Bottom Action Bar ─── */}
             <div className="flex-none">
                 <ActionBar
                     isRidePaused={isRidePaused}
