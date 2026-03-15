@@ -4,11 +4,7 @@
  */
 
 import { useEffect, useState } from "react";
-import {
-  GoogleMap,
-  MarkerF,
-  PolylineF,
-} from "@react-google-maps/api";
+import { GoogleMap, MarkerF, PolylineF } from "@react-google-maps/api";
 import Button from "../app/ui/components/Button";
 import GlassCard from "../app/ui/components/GlassCard";
 import { formatRideDuration } from "../app/utils/formatters";
@@ -40,7 +36,11 @@ const DARK_MAP_STYLE = [
     stylers: [{ color: "#1e293b" }],
   },
   { featureType: "transit", stylers: [{ visibility: "off" }] },
-  { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#1e293b" }] },
+  {
+    featureType: "administrative",
+    elementType: "geometry",
+    stylers: [{ color: "#1e293b" }],
+  },
 ];
 
 /* ─── RideHistoryMap — מפה פנימית במודל ─── */
@@ -328,8 +328,14 @@ export default function HistoryPage({
         {/* פס סטטיסטיקות: מספרים גדולים ומחיצות אנכיות עדינות */}
         {(() => {
           const totalRides = visibleHistoryRides.length;
-          const totalKm = visibleHistoryRides.reduce((sum, r) => sum + (r.rawKm || 0), 0);
-          const totalSeconds = visibleHistoryRides.reduce((sum, r) => sum + (r.rawSeconds || 0), 0);
+          const totalKm = visibleHistoryRides.reduce(
+            (sum, r) => sum + (r.rawKm || 0),
+            0,
+          );
+          const totalSeconds = visibleHistoryRides.reduce(
+            (sum, r) => sum + (r.rawSeconds || 0),
+            0,
+          );
 
           return (
             <section className="mv-card mt-6 px-4 py-3">
@@ -340,11 +346,13 @@ export default function HistoryPage({
                   </p>
                   <p className="mt-1 text-xs text-slate-400">רכיבות</p>
                 </div>
-                <div className="border-e border-white/10 px-0 flex flex-col justify-center min-h-[44px]">
+                <div className="border-e border-white/10 px-0 flex flex-col justify-center min-h-11">
                   <p className="text-sm sm:text-base font-semibold leading-tight text-white drop-shadow-sm">
                     {formatRideDuration(totalSeconds)}
                   </p>
-                  <p className="mt-1 text-[10px] sm:text-xs text-slate-400">זמן כולל</p>
+                  <p className="mt-1 text-[10px] sm:text-xs text-slate-400">
+                    זמן כולל
+                  </p>
                 </div>
                 <div className="px-2">
                   <p className="text-2xl font-semibold leading-none text-white">
@@ -381,15 +389,23 @@ export default function HistoryPage({
                   <p className="mt-1 text-xs text-slate-400">{ride.date}</p>
 
                   <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-300">
-                    <span className="flex items-center gap-1.5"><Timer className="w-3.5 h-3.5" /> {ride.duration}</span>
-                    <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> {ride.distance}</span>
+                    <span className="flex items-center gap-1.5">
+                      <Timer className="w-3.5 h-3.5" /> {ride.duration}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5" /> {ride.distance}
+                    </span>
                   </div>
                 </div>
 
                 <div className="h-24 overflow-hidden rounded-xl bg-linear-to-br from-slate-900/90 via-slate-800/65 to-emerald-900/30 ring-1 ring-white/10">
                   {ride.imageUrl && (
                     <img
-                      src={ride.imageUrl.startsWith('http') ? ride.imageUrl : `${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:5000'}${ride.imageUrl}`}
+                      src={
+                        ride.imageUrl.startsWith("http")
+                          ? ride.imageUrl
+                          : `${import.meta.env.VITE_API_BASE_URL?.replace("/api", "") || "http://localhost:5000"}${ride.imageUrl}`
+                      }
                       alt="תמונת רכיבה"
                       className="h-full w-full object-cover"
                     />
@@ -411,7 +427,7 @@ export default function HistoryPage({
             />
 
             {/* תוכן המודל: פרטים בסיסיים ופעולות */}
-            <div className="relative z-10 w-full max-w-md max-h-[90dvh] overflow-y-auto custom-scrollbar">
+            <div className="relative z-10 w-full max-w-md max-h-90dvh overflow-y-auto custom-scrollbar">
               <GlassCard title="פרטי רכיבה">
                 {/* כותרת קומפקטית: שם רכיבה + תאריך */}
                 <div className="mb-4 rounded-xl border border-white/10 bg-slate-900/40 px-3 py-2">
@@ -427,7 +443,11 @@ export default function HistoryPage({
                 {selectedHistoryRide.imageUrl && (
                   <div className="mb-4 overflow-hidden rounded-xl border border-white/10">
                     <img
-                      src={selectedHistoryRide.imageUrl.startsWith('http') ? selectedHistoryRide.imageUrl : `${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:5000'}${selectedHistoryRide.imageUrl}`}
+                      src={
+                        selectedHistoryRide.imageUrl.startsWith("http")
+                          ? selectedHistoryRide.imageUrl
+                          : `${import.meta.env.VITE_API_BASE_URL?.replace("/api", "") || "http://localhost:5000"}${selectedHistoryRide.imageUrl}`
+                      }
                       alt="תמונת רכיבה"
                       className="h-48 w-full object-cover"
                     />
@@ -482,7 +502,7 @@ export default function HistoryPage({
                         מפת מסלול
                       </p>
                       {/* גובה: 220px מובייל, 280px דסקטופ */}
-                      <div className="relative h-[220px] sm:h-[280px]">
+                      <div className="relative h-55 sm:h-70">
                         {!mapApiKey?.trim() ? (
                           <div className="flex h-full items-center justify-center text-xs text-slate-400">
                             חסר מפתח Google Maps
@@ -506,7 +526,9 @@ export default function HistoryPage({
 
                 {/* שדה עריכת שם רכיבה */}
                 <div className="mv-card mt-4 rounded-xl px-3 py-3">
-                  <p className="text-sm font-semibold text-slate-100">ערוך שם</p>
+                  <p className="text-sm font-semibold text-slate-100">
+                    ערוך שם
+                  </p>
                   <input
                     type="text"
                     value={editName}
@@ -530,13 +552,20 @@ export default function HistoryPage({
                     size="md"
                     onClick={async () => {
                       setModalError("");
-                      const rideId = selectedHistoryRide._id || selectedHistoryRide.id;
+                      const rideId =
+                        selectedHistoryRide._id || selectedHistoryRide.id;
                       try {
-                        await apiClient.patch(`/rides/${rideId}`, { name: editName.trim() });
+                        await apiClient.patch(`/rides/${rideId}`, {
+                          name: editName.trim(),
+                        });
                         await fetchHistoryFromServer();
                         closeModal();
                       } catch (err) {
-                        console.error("PATCH ride error:", err?.response?.status, err?.message);
+                        console.error(
+                          "PATCH ride error:",
+                          err?.response?.status,
+                          err?.message,
+                        );
                         setModalError("שגיאה בשמירה");
                       }
                     }}
@@ -550,15 +579,23 @@ export default function HistoryPage({
                     size="md"
                     className="border-rose-300/30 text-rose-300 hover:text-rose-200"
                     onClick={async () => {
-                      if (!window.confirm("האם אתה בטוח שברצונך למחוק רכיבה זו?")) return;
+                      if (
+                        !window.confirm("האם אתה בטוח שברצונך למחוק רכיבה זו?")
+                      )
+                        return;
                       setModalError("");
-                      const rideId = selectedHistoryRide._id || selectedHistoryRide.id;
+                      const rideId =
+                        selectedHistoryRide._id || selectedHistoryRide.id;
                       try {
                         await apiClient.delete(`/rides/${rideId}`);
                         await fetchHistoryFromServer();
                         closeModal();
                       } catch (err) {
-                        console.error("DELETE ride error:", err?.response?.status, err?.message);
+                        console.error(
+                          "DELETE ride error:",
+                          err?.response?.status,
+                          err?.message,
+                        );
                         setModalError("שגיאה במחיקה");
                       }
                     }}
@@ -576,7 +613,8 @@ export default function HistoryPage({
                       setConvertSuccess(false);
 
                       /* גישה לנתונים הגולמיים מהשרת */
-                      const raw = selectedHistoryRide.raw || selectedHistoryRide;
+                      const raw =
+                        selectedHistoryRide.raw || selectedHistoryRide;
                       const snap = raw.routeSnapshot;
                       const path = Array.isArray(raw.path) ? raw.path : [];
 
@@ -586,7 +624,10 @@ export default function HistoryPage({
                         /* מקרה 1: routeSnapshot עם נקודות ידועות */
                         payload = {
                           title: (
-                            raw.name || raw.title || snap.title || "מסלול חדש"
+                            raw.name ||
+                            raw.title ||
+                            snap.title ||
+                            "מסלול חדש"
                           ).trim(),
                           start: snap.start,
                           end: snap.end,
@@ -597,9 +638,16 @@ export default function HistoryPage({
                         const last = path[path.length - 1];
                         payload = {
                           title: (
-                            raw.name || raw.title || snap?.title || "רכיבה חופשית"
+                            raw.name ||
+                            raw.title ||
+                            snap?.title ||
+                            "רכיבה חופשית"
                           ).trim(),
-                          start: { lat: first.lat, lng: first.lng, label: "נקודת התחלה" },
+                          start: {
+                            lat: first.lat,
+                            lng: first.lng,
+                            label: "נקודת התחלה",
+                          },
                           end: { lat: last.lat, lng: last.lng, label: "יעד" },
                         };
                       } else {
@@ -613,7 +661,11 @@ export default function HistoryPage({
                         await fetchRoutesFromServer();
                         setConvertSuccess(true);
                       } catch (err) {
-                        console.error("המרה למסלול נכשלה:", err?.response?.status, err?.message);
+                        console.error(
+                          "המרה למסלול נכשלה:",
+                          err?.response?.status,
+                          err?.message,
+                        );
                         setConvertError("שגיאה בשמירה כמסלול");
                       }
                     }}
@@ -632,7 +684,9 @@ export default function HistoryPage({
                   <p className="mt-2 text-xs text-rose-300">{convertError}</p>
                 )}
                 {convertSuccess && (
-                  <p className="mt-2 text-xs text-emerald-300">נשמר כמסלול ✅</p>
+                  <p className="mt-2 text-xs text-emerald-300">
+                    נשמר כמסלול ✅
+                  </p>
                 )}
               </GlassCard>
             </div>

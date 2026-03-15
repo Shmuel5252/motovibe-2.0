@@ -68,7 +68,7 @@ function MileageAlertModal({ bike, onSave, onClose, isSaving }) {
         className="absolute inset-0 bg-black/60 backdrop-blur-md"
         onClick={onClose}
       />
-      <div className="relative z-10 w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl border-t border-white/8 sm:border bg-[#080e1f] shadow-[0_-20px_60px_rgba(0,0,0,0.7)] flex flex-col max-h-[90vh] overflow-hidden">
+      <div className="relative z-10 w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl border-t border-white/8 sm:border bg-[#080e1f] shadow-[0_-20px_60px_rgba(0,0,0,0.7)] flex flex-col max-h-90vh overflow-hidden">
         {/* ─ Header ─ */}
         <div className="px-6 pt-6 pb-4 shrink-0 border-b border-white/6">
           <div className="flex items-center justify-between">
@@ -378,7 +378,7 @@ function BikeFormModal({ initialData, onSave, onClose, isSaving, error }) {
             <button
               type="submit"
               disabled={isSaving}
-              className="flex-1 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.02] disabled:opacity-50"
+              className="flex-1 rounded-xl bg-linear-to-r from-emerald-500 to-teal-400 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.02] disabled:opacity-50"
             >
               {isSaving ? "שומר..." : "שמור"}
             </button>
@@ -464,7 +464,7 @@ function ServiceFormModal({
         className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative z-10 w-full max-w-sm rounded-2xl border border-white/10 bg-[#0B132B]/90 backdrop-blur-2xl p-6 shadow-2xl flex flex-col max-h-[85vh]">
+      <div className="relative z-10 w-full max-w-sm rounded-2xl border border-white/10 bg-[#0B132B]/90 backdrop-blur-2xl p-6 shadow-2xl flex flex-col max-h-85vh">
         <p className="text-base font-semibold text-slate-100 shrink-0 mb-4">
           הוסף שירות
         </p>
@@ -493,7 +493,7 @@ function ServiceFormModal({
               </button>
 
               {isDropdownOpen && (
-                <ul className="absolute left-0 right-0 w-full mt-2 z-[999] bg-[#0B132B]/95 backdrop-blur-2xl border border-white/10 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] overflow-hidden max-h-[200px] overflow-y-auto custom-scrollbar">
+                <ul className="absolute left-0 right-0 w-full mt-2 z-999 bg-[#0B132B]/95 backdrop-blur-2xl border border-white/10 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] overflow-hidden max-h-50 overflow-y-auto custom-scrollbar">
                   {SERVICE_TYPES.map((t) => (
                     <li
                       key={t}
@@ -626,7 +626,7 @@ function ServiceFormModal({
             <button
               type="submit"
               disabled={isSaving}
-              className="flex-1 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-500/20 hover:scale-[1.02] transition-all disabled:opacity-50"
+              className="flex-1 rounded-xl bg-linear-to-r from-emerald-500 to-teal-400 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-500/20 hover:scale-[1.02] transition-all disabled:opacity-50"
             >
               {isSaving ? "שומר..." : "הוסף"}
             </button>

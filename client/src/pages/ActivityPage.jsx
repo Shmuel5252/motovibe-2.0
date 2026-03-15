@@ -154,7 +154,7 @@ function ModalBackdrop({ onClose, children, className = "bg-transparent" }) {
         aria-label="סגור"
       />
       <div
-        className={`relative z-10 w-full sm:max-w-lg max-h-[92dvh] overflow-y-auto custom-scrollbar rounded-t-3xl sm:rounded-3xl border border-white/10 shadow-2xl ${className}`}
+        className={`relative z-10 w-full sm:max-w-lg max-h-92dvh overflow-y-auto custom-scrollbar rounded-t-3xl sm:rounded-3xl border border-white/10 shadow-2xl ${className}`}
       >
         {children}
       </div>
@@ -584,7 +584,7 @@ function HistoryDetailModal({
             <p className="border-b border-white/5 px-3 py-2 text-xs font-semibold text-slate-300">
               מפת מסלול
             </p>
-            <div className="h-[200px]">
+            <div className="h-50">
               <HistoryRideMap
                 points={points}
                 isMapLoaded={isMapLoaded}
@@ -625,7 +625,7 @@ function HistoryDetailModal({
           <button
             type="button"
             onClick={handleConvert}
-            className="flex-1 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.02] active:scale-95"
+            className="flex-1 rounded-xl bg-linear-to-r from-emerald-500 to-teal-400 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.02] active:scale-95"
           >
             הפוך למסלול
           </button>
@@ -879,7 +879,7 @@ function RouteDetailModal({
                   "radial-gradient(circle at center, transparent 30%, rgba(11,17,32,0.8) 120%)",
               }}
             />
-            <div className="h-[240px]">
+            <div className="h-60">
               <RouteDetailMap
                 route={route}
                 isMapLoaded={isMapLoaded}
@@ -1155,7 +1155,7 @@ function RouteDetailModal({
           <button
             type="button"
             onClick={handleStart}
-            className="flex flex-1 items-center justify-center gap-2 rounded-full py-3.5 text-sm font-black uppercase tracking-widest transition-all hover:brightness-110 active:scale-95 bg-gradient-to-r from-emerald-500 to-teal-400"
+            className="flex flex-1 items-center justify-center gap-2 rounded-full py-3.5 text-sm font-black uppercase tracking-widest transition-all hover:brightness-110 active:scale-95 bg-linear-to-r from-emerald-500 to-teal-400"
             style={{
               color: "#020617",
               boxShadow: `0 0 15px rgba(16,185,129,0.4), inset 0 2px 4px rgba(255,255,255,0.4)`,
@@ -1623,7 +1623,7 @@ function AddRouteModal({
         )}
 
         {/* type + difficulty + twisty */}
-        <div className="grid grid-cols-3 gap-3 pt-2 h-[88px]">
+        <div className="grid grid-cols-3 gap-3 pt-2 h-22">
           <div className="flex flex-col gap-1.5 h-full relative z-50">
             <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500">
               סוג
@@ -1648,7 +1648,7 @@ function AddRouteModal({
               direction="up"
             />
           </div>
-          <label className="flex flex-col items-center justify-center gap-2 rounded-xl border border-white/5 bg-white/5 py-3 cursor-pointer hover:bg-white/10 transition group mt-[22px] z-10">
+          <label className="flex flex-col items-center justify-center gap-2 rounded-xl border border-white/5 bg-white/5 py-3 cursor-pointer hover:bg-white/10 transition group mt-5.5 z-10">
             <input
               type="checkbox"
               checked={newRouteIsTwisty}
@@ -1678,7 +1678,7 @@ function AddRouteModal({
         <button
           type="button"
           onClick={handleSubmit}
-          className="w-full flex items-center justify-center gap-2 rounded-xl py-4 text-sm font-black uppercase tracking-widest transition-all hover:brightness-110 active:scale-95 bg-gradient-to-r from-emerald-500 to-teal-400 mt-4"
+          className="w-full flex items-center justify-center gap-2 rounded-xl py-4 text-sm font-black uppercase tracking-widest transition-all hover:brightness-110 active:scale-95 bg-linear-to-r from-emerald-500 to-teal-400 mt-4"
           style={{
             color: "#020617",
             boxShadow:
@@ -1902,7 +1902,7 @@ export default function ActivityPage({
           <button
             type="button"
             onClick={() => setShowAddRoute(true)}
-            className="group relative flex w-full max-w-[280px] items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-500/25 transition-all hover:scale-[1.02] hover:shadow-emerald-500/40 active:scale-95"
+            className="group relative flex w-full max-w-70 items-center justify-center gap-2.5 rounded-2xl bg-linear-to-r from-emerald-500 to-teal-400 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-500/25 transition-all hover:scale-[1.02] hover:shadow-emerald-500/40 active:scale-95"
           >
             <span className="text-lg leading-none drop-shadow-sm">＋</span>
             <span>מסלול חדש</span>
@@ -1913,7 +1913,7 @@ export default function ActivityPage({
       {/* ══════════════════════════════════════════════
           BOTTOM SHEET — raised card
       ══════════════════════════════════════════════ */}
-      <div className="relative -mt-8 rounded-t-3xl bg-transparent border-t border-white/10 min-h-[60vh] pb-32">
+      <div className="relative -mt-8 rounded-t-3xl bg-transparent border-t border-white/10 min-h-60vh pb-32">
         {/* drag handle */}
         <div className="mx-auto mt-3 h-1 w-10 rounded-full bg-white/20" />
 
@@ -1981,7 +1981,7 @@ export default function ActivityPage({
               >
                 <div className="flex items-center gap-3.5 rounded-2xl border border-white/5 bg-white/5 p-3 hover:border-white/10 hover:bg-white/10 backdrop-blur-sm transition-all shadow-sm">
                   {/* thumbnail */}
-                  <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-slate-800 via-slate-700 to-emerald-900/40 ring-1 ring-white/10">
+                  <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-linear-to-br from-slate-800 via-slate-700 to-emerald-900/40 ring-1 ring-white/10">
                     {ride.imageUrl ? (
                       <img
                         src={imgSrc(ride.imageUrl)}
@@ -2075,7 +2075,7 @@ export default function ActivityPage({
               >
                 <div className="flex items-center gap-3.5 rounded-2xl border border-white/5 bg-white/5 p-3 hover:border-white/10 hover:bg-white/10 backdrop-blur-sm transition-all shadow-sm">
                   {/* thumbnail placeholder */}
-                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 border border-white/5 text-xl">
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-slate-800 to-slate-900 border border-white/5 text-xl">
                     <MapIcon className="w-7 h-7 text-emerald-400 opacity-60" />
                   </div>
                   <div className="flex-1 min-w-0 py-0.5">

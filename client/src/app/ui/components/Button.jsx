@@ -1,7 +1,7 @@
 /* מפה של וריאנטים ויזואליים לפי שם. */
 const variantClasses = {
   primary:
-    "bg-gradient-to-r from-emerald-500 to-teal-400 text-white border-none shadow-lg shadow-emerald-500/20 focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2",
+    "bg-linear-to-r from-emerald-500 to-teal-400 text-white border-none shadow-lg shadow-emerald-500/20 focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2",
   ghost: "bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10",
 };
 

@@ -93,7 +93,7 @@ export default function NotificationCenter({
         <div
           ref={panelRef}
           dir="rtl"
-          className="fixed top-16 left-4 z-999 w-[320px] rounded-2xl border border-white/10 bg-[#0f172a]/95 backdrop-blur-md shadow-[0_20px_60px_rgba(0,0,0,0.5)] overflow-hidden"
+          className="fixed top-16 left-4 z-999 w-80 rounded-2xl border border-white/10 bg-[#0f172a]/95 backdrop-blur-md shadow-[0_20px_60px_rgba(0,0,0,0.5)] overflow-hidden"
         >
           {/* כותרת */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
