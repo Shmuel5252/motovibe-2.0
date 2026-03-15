@@ -23,6 +23,7 @@ import useAuth from "./hooks/useAuth";
 import useRoutes from "./hooks/useRoutes";
 import useBikes from "./hooks/useBikes";
 import useHistory from "./hooks/useHistory";
+import useNotifications from "./hooks/useNotifications";
 
 export { ISRAEL_DEFAULT_CENTER, ISRAEL_DEFAULT_ZOOM };
 
@@ -48,7 +49,7 @@ export default function useAppState() {
           }
         }
         return Promise.reject(error);
-      }
+      },
     );
 
     return client;
@@ -76,12 +77,19 @@ export default function useAppState() {
 
   const history = useHistory({ apiClient, authToken: auth.authToken });
 
+  const notifs = useNotifications({
+    authToken: auth.authToken,
+    apiClient,
+  });
+
   /* ─── State: פילטרים גלובליים ─── */
   const [selectedChip, setSelectedChip] = useState("הכל");
 
   /* isInitializing: אמת אם יש טוקן בעת הטעינה ועדיין מחכים לנתונים ראשוניים */
   const [isInitializing, setIsInitializing] = useState(
-    () => typeof window !== "undefined" && !!window.sessionStorage.getItem("mv_token")
+    () =>
+      typeof window !== "undefined" &&
+      !!window.sessionStorage.getItem("mv_token"),
   );
 
   /*
@@ -148,26 +156,37 @@ export default function useAppState() {
     isAuthenticated: auth.isAuthenticated,
     currentUser: auth.currentUser,
     showAuthScreen: auth.showAuthScreen,
-    authMode: auth.authMode, setAuthMode: auth.setAuthMode,
-    authName: auth.authName, setAuthName: auth.setAuthName,
-    authEmail: auth.authEmail, setAuthEmail: auth.setAuthEmail,
-    authPassword: auth.authPassword, setAuthPassword: auth.setAuthPassword,
-    authError: auth.authError, setAuthError: auth.setAuthError,
+    authMode: auth.authMode,
+    setAuthMode: auth.setAuthMode,
+    authName: auth.authName,
+    setAuthName: auth.setAuthName,
+    authEmail: auth.authEmail,
+    setAuthEmail: auth.setAuthEmail,
+    authPassword: auth.authPassword,
+    setAuthPassword: auth.setAuthPassword,
+    authError: auth.authError,
+    setAuthError: auth.setAuthError,
     isAuthSubmitting: auth.isAuthSubmitting,
     handleLogout: auth.handleLogout,
     handleUnauthorized: auth.handleUnauthorized,
     submitAuthForm,
 
     /* Routes */
-    routes: routesHook.routes, setRoutes: routesHook.setRoutes,
-    selectedRoute, setSelectedRoute,
-    routesView, setRoutesView,
+    routes: routesHook.routes,
+    setRoutes: routesHook.setRoutes,
+    selectedRoute,
+    setSelectedRoute,
+    routesView,
+    setRoutesView,
     goToRoutesListView,
     isRoutesLoading: routesHook.isRoutesLoading,
     routesLoadError: routesHook.routesLoadError,
-    routesSearchQuery: routesHook.routesSearchQuery, setRoutesSearchQuery: routesHook.setRoutesSearchQuery,
-    selectedRoutesFilter: routesHook.selectedRoutesFilter, setSelectedRoutesFilter: routesHook.setSelectedRoutesFilter,
-    isRoutesFilterMenuOpen: routesHook.isRoutesFilterMenuOpen, setIsRoutesFilterMenuOpen: routesHook.setIsRoutesFilterMenuOpen,
+    routesSearchQuery: routesHook.routesSearchQuery,
+    setRoutesSearchQuery: routesHook.setRoutesSearchQuery,
+    selectedRoutesFilter: routesHook.selectedRoutesFilter,
+    setSelectedRoutesFilter: routesHook.setSelectedRoutesFilter,
+    isRoutesFilterMenuOpen: routesHook.isRoutesFilterMenuOpen,
+    setIsRoutesFilterMenuOpen: routesHook.setIsRoutesFilterMenuOpen,
     fetchRoutesFromServer: routesHook.fetchRoutesFromServer,
     normalizeRouteFromServer: routesHook.normalizeRouteFromServer,
     routesFilterOptions: routesHook.routesFilterOptions,
@@ -180,23 +199,39 @@ export default function useAppState() {
     getSafePolylinePath: maps.getSafePolylinePath,
 
     /* New Route Form */
-    newRouteTitle: routesHook.newRouteTitle, setNewRouteTitle: routesHook.setNewRouteTitle,
-    newOriginLabel: routesHook.newOriginLabel, setNewOriginLabel: routesHook.setNewOriginLabel,
-    newOriginLatLng: routesHook.newOriginLatLng, setNewOriginLatLng: routesHook.setNewOriginLatLng,
-    newDestinationLabel: routesHook.newDestinationLabel, setNewDestinationLabel: routesHook.setNewDestinationLabel,
-    newDestinationLatLng: routesHook.newDestinationLatLng, setNewDestinationLatLng: routesHook.setNewDestinationLatLng,
-    newRouteType: routesHook.newRouteType, setNewRouteType: routesHook.setNewRouteType,
-    newRouteDifficulty: routesHook.newRouteDifficulty, setNewRouteDifficulty: routesHook.setNewRouteDifficulty,
-    newRouteIsTwisty: routesHook.newRouteIsTwisty, setNewRouteIsTwisty: routesHook.setNewRouteIsTwisty,
-    isAddRouteExpanded: routesHook.isAddRouteExpanded, setIsAddRouteExpanded: routesHook.setIsAddRouteExpanded,
-    activeMapPickField: routesHook.activeMapPickField, setActiveMapPickField: routesHook.setActiveMapPickField,
-    mapPickCenter: routesHook.mapPickCenter, setMapPickCenter: routesHook.setMapPickCenter,
-    mapPickStatus: routesHook.mapPickStatus, setMapPickStatus: routesHook.setMapPickStatus,
+    newRouteTitle: routesHook.newRouteTitle,
+    setNewRouteTitle: routesHook.setNewRouteTitle,
+    newOriginLabel: routesHook.newOriginLabel,
+    setNewOriginLabel: routesHook.setNewOriginLabel,
+    newOriginLatLng: routesHook.newOriginLatLng,
+    setNewOriginLatLng: routesHook.setNewOriginLatLng,
+    newDestinationLabel: routesHook.newDestinationLabel,
+    setNewDestinationLabel: routesHook.setNewDestinationLabel,
+    newDestinationLatLng: routesHook.newDestinationLatLng,
+    setNewDestinationLatLng: routesHook.setNewDestinationLatLng,
+    newRouteType: routesHook.newRouteType,
+    setNewRouteType: routesHook.setNewRouteType,
+    newRouteDifficulty: routesHook.newRouteDifficulty,
+    setNewRouteDifficulty: routesHook.setNewRouteDifficulty,
+    newRouteIsTwisty: routesHook.newRouteIsTwisty,
+    setNewRouteIsTwisty: routesHook.setNewRouteIsTwisty,
+    isAddRouteExpanded: routesHook.isAddRouteExpanded,
+    setIsAddRouteExpanded: routesHook.setIsAddRouteExpanded,
+    activeMapPickField: routesHook.activeMapPickField,
+    setActiveMapPickField: routesHook.setActiveMapPickField,
+    mapPickCenter: routesHook.mapPickCenter,
+    setMapPickCenter: routesHook.setMapPickCenter,
+    mapPickStatus: routesHook.mapPickStatus,
+    setMapPickStatus: routesHook.setMapPickStatus,
     mapPickRequestIdRef: routesHook.mapPickRequestIdRef,
-    originSuggestions: routesHook.originSuggestions, setOriginSuggestions: routesHook.setOriginSuggestions,
-    destinationSuggestions: routesHook.destinationSuggestions, setDestinationSuggestions: routesHook.setDestinationSuggestions,
-    activeSuggestionField: routesHook.activeSuggestionField, setActiveSuggestionField: routesHook.setActiveSuggestionField,
-    newRouteLocationError: routesHook.newRouteLocationError, setNewRouteLocationError: routesHook.setNewRouteLocationError,
+    originSuggestions: routesHook.originSuggestions,
+    setOriginSuggestions: routesHook.setOriginSuggestions,
+    destinationSuggestions: routesHook.destinationSuggestions,
+    setDestinationSuggestions: routesHook.setDestinationSuggestions,
+    activeSuggestionField: routesHook.activeSuggestionField,
+    setActiveSuggestionField: routesHook.setActiveSuggestionField,
+    newRouteLocationError: routesHook.newRouteLocationError,
+    setNewRouteLocationError: routesHook.setNewRouteLocationError,
 
     /* Bikes */
     bikes: bikes.bikes,
@@ -213,7 +248,8 @@ export default function useAppState() {
     addMaintenanceLog: bikes.addMaintenanceLog,
     deleteMaintenanceLog: bikes.deleteMaintenanceLog,
     /* Bike photo */
-    bikePhotoPreview: bikes.bikePhotoPreview, setBikePhotoPreview: bikes.setBikePhotoPreview,
+    bikePhotoPreview: bikes.bikePhotoPreview,
+    setBikePhotoPreview: bikes.setBikePhotoPreview,
     bikePhotoInputRef: bikes.bikePhotoInputRef,
 
     /* History */
@@ -222,18 +258,33 @@ export default function useAppState() {
     historyError: history.historyError,
     fetchHistoryFromServer: history.fetchHistoryFromServer,
     historyFilters: history.historyFilters,
-    selectedHistoryFilter: history.selectedHistoryFilter, setSelectedHistoryFilter: history.setSelectedHistoryFilter,
-    isHistoryFilterMenuOpen: history.isHistoryFilterMenuOpen, setIsHistoryFilterMenuOpen: history.setIsHistoryFilterMenuOpen,
-    selectedHistoryRide: history.selectedHistoryRide, setSelectedHistoryRide: history.setSelectedHistoryRide,
-    historyRideNotes: history.historyRideNotes, setHistoryRideNotes: history.setHistoryRideNotes,
-    searchQuery: history.searchQuery, setSearchQuery: history.setSearchQuery,
+    selectedHistoryFilter: history.selectedHistoryFilter,
+    setSelectedHistoryFilter: history.setSelectedHistoryFilter,
+    isHistoryFilterMenuOpen: history.isHistoryFilterMenuOpen,
+    setIsHistoryFilterMenuOpen: history.setIsHistoryFilterMenuOpen,
+    selectedHistoryRide: history.selectedHistoryRide,
+    setSelectedHistoryRide: history.setSelectedHistoryRide,
+    historyRideNotes: history.historyRideNotes,
+    setHistoryRideNotes: history.setHistoryRideNotes,
+    searchQuery: history.searchQuery,
+    setSearchQuery: history.setSearchQuery,
 
     /* Ride */
-    didStartFromRoute, setDidStartFromRoute,
+    didStartFromRoute,
+    setDidStartFromRoute,
 
     /* Misc */
-    selectedChip, setSelectedChip,
-    isInitializing, setIsInitializing,
+    selectedChip,
+    setSelectedChip,
+    isInitializing,
+    setIsInitializing,
     apiClient,
+
+    /* Notifications */
+    notifications: notifs.notifications,
+    unreadCount: notifs.unreadCount,
+    markNotificationRead: notifs.markRead,
+    markAllNotificationsRead: notifs.markAllRead,
+    deleteNotification: notifs.deleteNotification,
   };
 }

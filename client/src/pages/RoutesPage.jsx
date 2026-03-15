@@ -824,7 +824,7 @@ export default function RoutesPage({
                           {isPlacesApiReady &&
                             activeSuggestionField === "from" &&
                             originSuggestions.length > 0 && (
-                              <div className="absolute right-0 top-full z-50 mt-1 w-full overflow-hidden rounded-xl border border-white/10 bg-slate-900/95 shadow-lg backdrop-blur">
+                              <div className="absolute right-0 top-full z-100 mt-1 w-full rounded-xl border border-white/10 bg-slate-900/95 shadow-lg backdrop-blur">
                                 {originSuggestions
                                   .slice(0, 6)
                                   .map((suggestion) => (
@@ -880,7 +880,7 @@ export default function RoutesPage({
                           {isPlacesApiReady &&
                             activeSuggestionField === "to" &&
                             destinationSuggestions.length > 0 && (
-                              <div className="absolute right-0 top-full z-50 mt-1 w-full overflow-hidden rounded-xl border border-white/10 bg-slate-900/95 shadow-lg backdrop-blur">
+                              <div className="absolute right-0 top-full z-100 mt-1 w-full rounded-xl border border-white/10 bg-slate-900/95 shadow-lg backdrop-blur">
                                 {destinationSuggestions
                                   .slice(0, 6)
                                   .map((suggestion) => (

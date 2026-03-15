@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import BottomNav from "../ui/nav/BottomNav";
 import SideDrawer from "../ui/nav/SideDrawer";
 import TopNav from "../ui/nav/TopNav";
+import NotificationCenter from "../ui/NotificationCenter";
 
 /*
  * תצורת לשוניות הניווט הראשית.
@@ -17,9 +18,19 @@ const NAV_ITEMS = [
 /**
  * מעטפת הניווט הראשית של האפליקציה.
  */
-function AppShell({ children, onLogout, isAuthenticated = false }) {
+function AppShell({
+  children,
+  onLogout,
+  isAuthenticated = false,
+  notifications = [],
+  unreadCount = 0,
+  onMarkRead,
+  onMarkAllRead,
+  onDeleteNotification,
+}) {
   const [activeTab, setActiveTab] = useState("home");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isRideActive, setIsRideActive] = useState(false);
   const [isRidePaused, setIsRidePaused] = useState(false);
   const [isRideMinimized, setIsRideMinimized] = useState(false);
@@ -40,6 +51,7 @@ function AppShell({ children, onLogout, isAuthenticated = false }) {
   const onNavigate = (tabKey) => {
     setActiveTab(tabKey);
     setIsDrawerOpen(false);
+    setIsNotifOpen(false);
   };
 
   const handleRideActiveChange = (isActive) => {
@@ -64,9 +76,25 @@ function AppShell({ children, onLogout, isAuthenticated = false }) {
           items={NAV_ITEMS}
           activeTab={activeTab}
           onNavigate={onNavigate}
-          onMenuClick={() => setIsDrawerOpen(true)}
+          onMenuClick={() => {
+            setIsDrawerOpen(true);
+            setIsNotifOpen(false);
+          }}
           onLogout={onLogout}
           isAuthenticated={isAuthenticated}
+          notificationSlot={
+            <NotificationCenter
+              notifications={notifications}
+              unreadCount={unreadCount}
+              isOpen={isNotifOpen}
+              onToggle={() => setIsNotifOpen((p) => !p)}
+              onClose={() => setIsNotifOpen(false)}
+              onMarkRead={onMarkRead}
+              onMarkAllRead={onMarkAllRead}
+              onDelete={onDeleteNotification}
+              onNavigate={onNavigate}
+            />
+          }
         />
       )}
 

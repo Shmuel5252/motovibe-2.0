@@ -2,12 +2,13 @@
  * סרגל ניווט עליון של האפליקציה.
  * מציג מיתוג, כפתור תפריט למובייל, וקישורי ניווט בדסקטופ.
  *
- * @param {Array}    props.items          - פריטי ניווט (key, label, icon)
- * @param {string}   props.activeTab      - הלשונית הפעילה
- * @param {Function} props.onNavigate     - callback(tabKey)
- * @param {Function} props.onMenuClick    - פתיחת מגירת צד
- * @param {Function} [props.onLogout]     - התנתקות
+ * @param {Array}    props.items              - פריטי ניווט (key, label, icon)
+ * @param {string}   props.activeTab          - הלשונית הפעילה
+ * @param {Function} props.onNavigate         - callback(tabKey)
+ * @param {Function} props.onMenuClick        - פתיחת מגירת צד
+ * @param {Function} [props.onLogout]         - התנתקות
  * @param {boolean}  [props.isAuthenticated]
+ * @param {ReactNode} [props.notificationSlot] - רכיב פעמון התראות
  */
 function TopNav({
   items,
@@ -16,20 +17,26 @@ function TopNav({
   onMenuClick,
   onLogout,
   isAuthenticated,
+  notificationSlot,
 }) {
   return (
     <header className="sticky top-0 z-30 px-4 pt-4 sm:px-6">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-3 py-2 bg-transparent">
+        {/* Right cluster: Hamburger + Bell (RTL: this is the start side) */}
+        <div className="flex items-center gap-2">
+          {/* Hamburger — opens SideDrawer (hidden above lg) */}
+          <button
+            type="button"
+            className="mv-card inline-flex h-10 w-10 items-center justify-center rounded-xl text-2xl leading-none lg:hidden"
+            onClick={onMenuClick}
+            aria-label="פתח תפריט"
+          >
+            ≡
+          </button>
 
-        {/* Hamburger — opens SideDrawer (hidden above lg) */}
-        <button
-          type="button"
-          className="mv-card inline-flex h-10 w-10 items-center justify-center rounded-xl text-2xl leading-none lg:hidden"
-          onClick={onMenuClick}
-          aria-label="פתח תפריט"
-        >
-          ≡
-        </button>
+          {/* Bell notification slot */}
+          {notificationSlot}
+        </div>
 
         {/* Brand */}
         <span className="text-base font-semibold tracking-wide text-white/90 sm:text-lg">

@@ -18,6 +18,8 @@ import ActivityPage from "./pages/ActivityPage";
 import RidePage from "./pages/RidePage";
 import MyBikePage from "./pages/MyBikePage";
 import CommunityHubPage from "./pages/CommunityHubPage";
+import ProfilePage from "./pages/ProfilePage";
+import AppSettingsPage from "./pages/AppSettingsPage";
 import { AuthScreen } from "./pages/SettingsPage";
 
 /* ─── LoadingSplash ─── */
@@ -123,6 +125,11 @@ function App() {
     <AppShell
       onLogout={state.handleLogout}
       isAuthenticated={state.isAuthenticated}
+      notifications={state.notifications}
+      unreadCount={state.unreadCount}
+      onMarkRead={state.markNotificationRead}
+      onMarkAllRead={state.markAllNotificationsRead}
+      onDeleteNotification={state.deleteNotification}
     >
       {({
         activeTab,
@@ -421,6 +428,27 @@ function App() {
                 fetchBikesFromServer={state.fetchBikesFromServer}
               />
             </>
+          );
+        }
+
+        /* ברירת מחדל — טאב bike */
+        if (activeTab === "profile") {
+          return (
+            <ProfilePage
+              currentUser={state.currentUser}
+              onLogout={state.handleLogout}
+              onNavigate={navigateTo}
+            />
+          );
+        }
+
+        if (activeTab === "settings") {
+          return (
+            <AppSettingsPage
+              currentUser={state.currentUser}
+              onLogout={state.handleLogout}
+              onNavigate={navigateTo}
+            />
           );
         }
 

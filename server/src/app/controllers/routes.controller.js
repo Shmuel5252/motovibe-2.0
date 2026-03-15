@@ -2,6 +2,7 @@ const { validationResult } = require("express-validator");
 const mongoose = require("mongoose");
 const Route = require("../models/Route");
 const { computeDirections } = require("../services/directions.service");
+const { createGlobalAndEmit } = require("./notifications.controller");
 
 function sendValidation(res, errors) {
   return res.status(400).json({
@@ -55,6 +56,24 @@ async function createRoute(req, res) {
     polyline,
   });
 
+  // Fire-and-forget global notification when a public route is shared with the community
+  if (safeVisibility === "public") {
+    console.log(
+      `[notifications] 🔔 Public route "${title}" saved (_id=${route._id}) — calling createGlobalAndEmit`,
+    );
+    createGlobalAndEmit({
+      type: "route_new",
+      title: "מסלול חדש בקהילה!",
+      body: `${title} — ${Math.round(distanceKm)} ק"מ`,
+      link: "community",
+      sender: owner,
+    }).catch((err) => console.error("[notifications] route_new FAILED:", err));
+  } else {
+    console.log(
+      `[notifications] Route "${title}" visibility=${safeVisibility} — no global notification`,
+    );
+  }
+
   return res.status(201).json({ route });
 }
 
@@ -100,6 +119,15 @@ async function updateMyRoute(req, res) {
     });
   }
 
+  // Fetch the existing route first so we can detect a private→public transition
+  const existing = await Route.findOne({ _id: id, owner });
+  if (!existing) {
+    return res.status(404).json({
+      error: { code: "NOT_FOUND", message: "Route not found" },
+    });
+  }
+  const wasPublic = existing.visibility === "public";
+
   const update = {};
   const fields = [
     "title",
@@ -117,13 +145,6 @@ async function updateMyRoute(req, res) {
   const startChanged = req.body.start !== undefined;
   const endChanged = req.body.end !== undefined;
   if (startChanged || endChanged) {
-    const existing = await Route.findOne({ _id: id, owner });
-    if (!existing) {
-      return res.status(404).json({
-        error: { code: "NOT_FOUND", message: "Route not found" },
-      });
-    }
-
     const finalStart = startChanged ? req.body.start : existing.start;
     const finalEnd = endChanged ? req.body.end : existing.end;
     let dir;
@@ -151,6 +172,21 @@ async function updateMyRoute(req, res) {
     return res.status(404).json({
       error: { code: "NOT_FOUND", message: "Route not found" },
     });
+  }
+
+  // Fire notification when route is published for the first time (private → public)
+  const isNowPublic = update.visibility === "public";
+  if (!wasPublic && isNowPublic) {
+    console.log(
+      `[notifications] 🔔 Route "${route.title}" published (_id=${route._id}) — calling createGlobalAndEmit`,
+    );
+    createGlobalAndEmit({
+      type: "route_new",
+      title: "מסלול חדש בקהילה!",
+      body: `${route.title} — ${Math.round(route.distanceKm)} ק"מ`,
+      link: "community",
+      sender: owner,
+    }).catch((err) => console.error("[notifications] route_new FAILED:", err));
   }
 
   return res.status(200).json({ route });

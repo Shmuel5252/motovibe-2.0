@@ -76,14 +76,32 @@ function SideDrawer({ open, items, activeTab, onNavigate, onClose, onLogout }) {
             </ul>
           </nav>
 
-          {/* מקטע הגדרות בסיסי (Placeholder) */}
+          {/* מקטע הגדרות */}
           <section className="mt-6">
             <h3 className="mb-2 text-xs font-semibold tracking-wide text-slate-400">
               הגדרות
             </h3>
-            <div className="mv-card space-y-2 rounded-xl p-3 text-sm text-slate-200">
-              <p>חשבון</p>
-              <p>התראות</p>
+            <div className="mv-card space-y-1 rounded-xl p-2 text-sm">
+              <button
+                type="button"
+                onClick={() => {
+                  onNavigate("profile");
+                }}
+                className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-slate-200 transition hover:bg-white/10"
+              >
+                <span>חשבון</span>
+                <span className="text-slate-500">›</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onNavigate("settings");
+                }}
+                className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-slate-200 transition hover:bg-white/10"
+              >
+                <span>הגדרות</span>
+                <span className="text-slate-500">›</span>
+              </button>
             </div>
           </section>
 

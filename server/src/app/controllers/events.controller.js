@@ -1,6 +1,7 @@
 const { validationResult } = require("express-validator");
 const mongoose = require("mongoose");
 const RideEvent = require("../models/RideEvent");
+const { createGlobalAndEmit } = require("./notifications.controller");
 
 function sendValidation(res, errors) {
   return res.status(400).json({
@@ -31,6 +32,15 @@ async function createEvent(req, res) {
     maxParticipants: maxParticipants ?? null,
     participants: [organizer], // organizer automatically joins
   });
+
+  // Fire-and-forget global notification for new community ride event
+  createGlobalAndEmit({
+    type: "event_new",
+    title: "רכיבה קבוצתית חדשה!",
+    body: title,
+    link: "community",
+    sender: organizer,
+  }).catch((err) => console.error("[notifications] event_new:", err));
 
   return res.status(201).json({ event });
 }

@@ -2,7 +2,12 @@ const mongoose = require("mongoose");
 
 const BikeSchema = new mongoose.Schema(
   {
-    owner: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    owner: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
 
     name: { type: String, required: true, trim: true, maxlength: 60 },
     make: { type: String, trim: true, maxlength: 60 },
@@ -10,11 +15,21 @@ const BikeSchema = new mongoose.Schema(
     year: { type: Number, min: 1900, max: 2100 },
 
     currentOdometerKm: { type: Number, default: 0, min: 0 },
+    mileageAlerts: {
+      type: [
+        {
+          type: { type: String, required: true, trim: true, maxlength: 60 },
+          targetKm: { type: Number, required: true, min: 0 },
+          note: { type: String, trim: true, maxlength: 200, default: "" },
+        },
+      ],
+      default: [],
+    },
     engineCc: { type: Number, min: 0 },
     imageUrl: { type: String, trim: true, maxlength: 500 },
     testValidity: { type: Date },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 module.exports = mongoose.model("Bike", BikeSchema);

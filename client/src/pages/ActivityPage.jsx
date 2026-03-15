@@ -1458,7 +1458,7 @@ function AddRouteModal({
         {/* origin / destination cards */}
         <div className="space-y-3">
           {/* Origin */}
-          <div className="rounded-2xl border border-white/5 bg-white/5 p-4 backdrop-blur-xl shadow-sm space-y-2 relative">
+          <div className="rounded-2xl border border-white/5 bg-white/5 p-4 backdrop-blur-xl shadow-sm space-y-2 relative z-10">
             <label className="text-[10px] uppercase tracking-wider font-bold text-[#00FFA3]">
               מוצא
             </label>
@@ -1478,7 +1478,7 @@ function AddRouteModal({
                 {isPlacesApiReady &&
                   activeSuggestionField === "from" &&
                   originSuggestions.length > 0 && (
-                    <div className="absolute right-0 top-full z-50 mt-2 w-full overflow-hidden rounded-xl border border-white/10 bg-[#0f172a] shadow-2xl">
+                    <div className="absolute right-0 top-full z-100 mt-2 w-full rounded-xl border border-white/10 bg-[#0f172a] shadow-2xl">
                       {originSuggestions.slice(0, 5).map((s) => (
                         <button
                           key={s.place_id}
@@ -1524,7 +1524,7 @@ function AddRouteModal({
                 {isPlacesApiReady &&
                   activeSuggestionField === "to" &&
                   destinationSuggestions.length > 0 && (
-                    <div className="absolute right-0 top-full z-50 mt-2 w-full overflow-hidden rounded-xl border border-white/10 bg-[#0f172a] shadow-2xl">
+                    <div className="absolute right-0 top-full z-100 mt-2 w-full rounded-xl border border-white/10 bg-[#0f172a] shadow-2xl">
                       {destinationSuggestions.slice(0, 5).map((s) => (
                         <button
                           key={s.place_id}

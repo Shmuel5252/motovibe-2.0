@@ -4,191 +4,231 @@ const { validationResult } = require("express-validator");
 const Ride = require("../models/Ride");
 const Route = require("../models/Route");
 
-
 function notFound(res) {
-    return res.status(404).json({
-        error: { code: "NOT_FOUND", message: "Not found" }
-    });
+  return res.status(404).json({
+    error: { code: "NOT_FOUND", message: "Not found" },
+  });
 }
 
 async function startRide(req, res) {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({
-            error: {
-                code: "VALIDATION_ERROR",
-                details: errors.array()
-            }
-        });
-    }
-
-    const owner = req.user.userId;
-    const { routeId } = req.body;
-
-    /* בדיקת רכיבה פעילה קודמת — קודמת לכל לוגיקת ניתוב */
-    const active = await Ride.findOne({ owner, endedAt: null });
-    if (active) {
-        return res.status(409).json({
-            error: { code: "ACTIVE_RIDE_EXISTS", message: "You already have an active ride" }
-        });
-    }
-
-    /* ברירת מחדל לרכיבה חופשית (ללא מסלול) */
-    let route = null;
-    let routeSnapshot = { title: "רכיבה חופשית" };
-
-    if (routeId) {
-        /* הגנה דפנסיבית — express-validator כבר מסנן, אך שומרים את הבדיקה */
-        if (!mongoose.isValidObjectId(routeId)) {
-            return res.status(400).json({
-                error: { code: "VALIDATION_ERROR", details: [{ msg: "Invalid routeId" }] }
-            });
-        }
-
-        /* חיפוש מסלול שייך למשתמש */
-        const foundRoute = await Route.findOne({ _id: routeId, owner });
-        if (!foundRoute) {
-            return notFound(res);
-        }
-
-        /* בניית snapshot מהמסלול */
-        routeSnapshot = {
-            title: foundRoute.title,
-            start: foundRoute.start,
-            end: foundRoute.end,
-            distanceKm: foundRoute.distanceKm,
-            etaMinutes: foundRoute.etaMinutes,
-            polyline: foundRoute.polyline,
-        };
-        route = foundRoute._id;
-    }
-
-    const ride = await Ride.create({
-        owner,
-        route: route ?? null,
-        routeSnapshot,
-        startedAt: new Date(),
-        endedAt: null,
-        durationSeconds: 0,
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      error: {
+        code: "VALIDATION_ERROR",
+        details: errors.array(),
+      },
     });
-    return res.status(201).json({ ride });
+  }
+
+  const owner = req.user.userId;
+  const { routeId } = req.body;
+
+  /* בדיקת רכיבה פעילה קודמת — קודמת לכל לוגיקת ניתוב */
+  const active = await Ride.findOne({ owner, endedAt: null });
+  if (active) {
+    return res.status(409).json({
+      error: {
+        code: "ACTIVE_RIDE_EXISTS",
+        message: "You already have an active ride",
+      },
+    });
+  }
+
+  /* ברירת מחדל לרכיבה חופשית (ללא מסלול) */
+  let route = null;
+  let routeSnapshot = { title: "רכיבה חופשית" };
+
+  if (routeId) {
+    /* הגנה דפנסיבית — express-validator כבר מסנן, אך שומרים את הבדיקה */
+    if (!mongoose.isValidObjectId(routeId)) {
+      return res.status(400).json({
+        error: {
+          code: "VALIDATION_ERROR",
+          details: [{ msg: "Invalid routeId" }],
+        },
+      });
+    }
+
+    /* חיפוש מסלול שייך למשתמש */
+    const foundRoute = await Route.findOne({ _id: routeId, owner });
+    if (!foundRoute) {
+      return notFound(res);
+    }
+
+    /* בניית snapshot מהמסלול */
+    routeSnapshot = {
+      title: foundRoute.title,
+      start: foundRoute.start,
+      end: foundRoute.end,
+      distanceKm: foundRoute.distanceKm,
+      etaMinutes: foundRoute.etaMinutes,
+      polyline: foundRoute.polyline,
+    };
+    route = foundRoute._id;
+  }
+
+  const ride = await Ride.create({
+    owner,
+    route: route ?? null,
+    routeSnapshot,
+    startedAt: new Date(),
+    endedAt: null,
+    durationSeconds: 0,
+  });
+  return res.status(201).json({ ride });
 }
 
 async function stopRide(req, res) {
-    const owner = req.user.userId;
+  const owner = req.user.userId;
 
-    const ride = await Ride.findOne({ owner, endedAt: null }).sort({ startedAt: -1 });
-    if (!ride) {
-        return res.status(409).json({
-            error: { code: "NO_ACTIVE_RIDE", message: "No active ride to stop" }
-        });
-    }
+  const ride = await Ride.findOne({ owner, endedAt: null }).sort({
+    startedAt: -1,
+  });
+  if (!ride) {
+    return res.status(409).json({
+      error: { code: "NO_ACTIVE_RIDE", message: "No active ride to stop" },
+    });
+  }
 
-    const endedAt = new Date();
-    const durationSeconds = Math.max(
-        0,
-        Math.floor((endedAt.getTime() - ride.startedAt.getTime()) / 1000));
+  const endedAt = new Date();
+  const durationSeconds = Math.max(
+    0,
+    Math.floor((endedAt.getTime() - ride.startedAt.getTime()) / 1000),
+  );
 
-    ride.endedAt = endedAt;
-    ride.durationSeconds = durationSeconds;
+  ride.endedAt = endedAt;
+  ride.durationSeconds = durationSeconds;
 
-    /* שמירת נתיב GPS ומרחק אם נשלחו מהלקוח */
-    const { path, distanceKm, imageUrl } = req.body;
+  /* שמירת נתיב GPS ומרחק אם נשלחו מהלקוח */
+  const { path, distanceKm, imageUrl } = req.body;
 
-    if (typeof imageUrl === 'string' && imageUrl.trim() !== '') {
-        ride.imageUrl = imageUrl.trim();
-    }
-    if (Array.isArray(path) && path.length > 0) {
-        /* סינון נקודות תקינות בלבד + הגבלת גודל למניעת שימוש לרעה */
-        const sanitized = path
-            .filter(p => typeof p.lat === 'number' && isFinite(p.lat) &&
-                typeof p.lng === 'number' && isFinite(p.lng))
-            .slice(-2000);
-        ride.path = sanitized;
-    }
+  if (typeof imageUrl === "string" && imageUrl.trim() !== "") {
+    ride.imageUrl = imageUrl.trim();
+  }
+  if (Array.isArray(path) && path.length > 0) {
+    /* סינון נקודות תקינות בלבד + הגבלת גודל למניעת שימוש לרעה */
+    const sanitized = path
+      .filter(
+        (p) =>
+          typeof p.lat === "number" &&
+          isFinite(p.lat) &&
+          typeof p.lng === "number" &&
+          isFinite(p.lng),
+      )
+      .slice(-2000);
+    ride.path = sanitized;
+  }
 
-    /* עדכון מד אוצץ באופנוע הראשי של המשתמש */
-    if (typeof distanceKm === 'number' && distanceKm > 0) {
-        const Bike = require("../models/Bike");
-        const bike = await Bike.findOne({ owner });
-        if (bike) {
-            bike.currentOdometerKm = parseFloat(((bike.currentOdometerKm || 0) + distanceKm).toFixed(2));
-            await bike.save();
+  /* עדכון מד אוצץ באופנוע הראשי של המשתמש */
+  if (typeof distanceKm === "number" && distanceKm > 0) {
+    const Bike = require("../models/Bike");
+    const { createAndEmit } = require("./notifications.controller");
+    const bike = await Bike.findOne({ owner });
+    if (bike) {
+      bike.currentOdometerKm = parseFloat(
+        ((bike.currentOdometerKm || 0) + distanceKm).toFixed(2),
+      );
+      const newOdometer = bike.currentOdometerKm;
+
+      /* בדיקת חצייה של יעדי קילומטראז' */
+      const firedAlerts = [];
+      for (const alert of bike.mileageAlerts || []) {
+        if (newOdometer >= alert.targetKm) {
+          firedAlerts.push(alert.toObject());
+          alert.targetKm = parseFloat((alert.targetKm + 10000).toFixed(2));
         }
-    }
+      }
 
-    await ride.save();
-    return res.status(200).json({ ride });
+      await bike.save();
+
+      for (const alert of firedAlerts) {
+        await createAndEmit({
+          recipient: owner,
+          type: "mileage_alert",
+          title: `${alert.type} — הגיע הזמן! 🔔`,
+          body: alert.note
+            ? `הגעת ל-${alert.targetKm.toLocaleString("he-IL")} ק"מ — ${alert.note}`
+            : `האופנוע שלך חצה את יעד הקילומטראז' עבור ${alert.type}.`,
+          link: "bike",
+        });
+      }
+    }
+  }
+
+  await ride.save();
+  return res.status(200).json({ ride });
 }
 
 async function getActiveRide(req, res) {
-    const owner = req.user.userId;
+  const owner = req.user.userId;
 
-    const ride = await Ride.findOne({ owner, endedAt: null })
-        .sort({ startedAt: -1 });
+  const ride = await Ride.findOne({ owner, endedAt: null }).sort({
+    startedAt: -1,
+  });
 
-    return res.status(200).json({ ride: ride || null });
+  return res.status(200).json({ ride: ride || null });
 }
 
 async function getRideHistory(req, res) {
-    const owner = req.user.userId;
+  const owner = req.user.userId;
 
-    const rides = await Ride.find({ owner, endedAt: { $ne: null } })
-        .sort({ startedAt: -1 })
-        .limit(50);
+  const rides = await Ride.find({ owner, endedAt: { $ne: null } })
+    .sort({ startedAt: -1 })
+    .limit(50);
 
-    return res.status(200).json({ rides });
+  return res.status(200).json({ rides });
 }
 
 /* עדכון שם רכיבה לפי מזהה */
 async function updateRide(req, res) {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({
-            error: { code: "VALIDATION_ERROR", details: errors.array() }
-        });
-    }
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      error: { code: "VALIDATION_ERROR", details: errors.array() },
+    });
+  }
 
-    const owner = req.user.userId;
-    const { id } = req.params;
-    const { name, imageUrl } = req.body;
+  const owner = req.user.userId;
+  const { id } = req.params;
+  const { name, imageUrl } = req.body;
 
-    const ride = await Ride.findOne({ _id: id, owner });
-    if (!ride) {
-        return notFound(res);
-    }
+  const ride = await Ride.findOne({ _id: id, owner });
+  if (!ride) {
+    return notFound(res);
+  }
 
-    /* עדכון השם אם סופק */
-    if (typeof name === 'string') {
-        ride.name = name.trim();
-    }
-    if (typeof imageUrl === 'string') {
-        ride.imageUrl = imageUrl.trim();
-    }
+  /* עדכון השם אם סופק */
+  if (typeof name === "string") {
+    ride.name = name.trim();
+  }
+  if (typeof imageUrl === "string") {
+    ride.imageUrl = imageUrl.trim();
+  }
 
-    await ride.save();
-    return res.status(200).json({ ride });
+  await ride.save();
+  return res.status(200).json({ ride });
 }
 
 /* מחיקת רכיבה לפי מזהה */
 async function deleteRide(req, res) {
-    const { id } = req.params;
-    const owner = req.user.userId;
+  const { id } = req.params;
+  const owner = req.user.userId;
 
-    const ride = await Ride.findOne({ _id: id, owner });
-    if (!ride) {
-        return notFound(res);
-    }
+  const ride = await Ride.findOne({ _id: id, owner });
+  if (!ride) {
+    return notFound(res);
+  }
 
-    await ride.deleteOne();
-    return res.status(200).json({ ok: true });
+  await ride.deleteOne();
+  return res.status(200).json({ ok: true });
 }
 
 module.exports = {
-    startRide,
-    stopRide,
-    getActiveRide,
-    getRideHistory,
-    updateRide,
-    deleteRide,
+  startRide,
+  stopRide,
+  getActiveRide,
+  getRideHistory,
+  updateRide,
+  deleteRide,
 };

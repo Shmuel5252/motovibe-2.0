@@ -1,9 +1,11 @@
+const http = require("http");
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
 require("dotenv").config();
 const connectDB = require("./config/db");
 const passport = require("./config/passport");
+const { initSocket } = require("./config/socket");
 
 const healthRoutes = require("./app/routes/health.routes");
 
@@ -21,7 +23,10 @@ const maintenanceRoutes = require("./app/routes/maintenance.routes");
 
 const uploadRoutes = require("./app/routes/upload.routes");
 const eventsRoutes = require("./app/routes/events.routes");
+const notificationsRoutes = require("./app/routes/notifications.routes");
+const { startMaintenanceCron } = require("./jobs/maintenance.cron");
 const app = express();
+const httpServer = http.createServer(app);
 
 // Middlewares
 app.use(cors());
@@ -49,6 +54,7 @@ app.use("/api/maintenance", maintenanceRoutes);
 app.use("/api/upload", uploadRoutes);
 
 app.use("/api/events", eventsRoutes);
+app.use("/api/notifications", notificationsRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -74,8 +80,10 @@ const PORT = process.env.PORT || 5000;
 async function startServer() {
   try {
     await connectDB();
+    initSocket(httpServer);
+    startMaintenanceCron();
 
-    app.listen(PORT, () => {
+    httpServer.listen(PORT, () => {
       console.log(`✅ Server running on http://localhost:${PORT}`);
     });
   } catch (error) {
