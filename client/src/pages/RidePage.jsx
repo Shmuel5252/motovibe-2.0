@@ -284,7 +284,7 @@ function RideActiveHud({
 
           {/* מחוון למסלול פעיל */}
           {selectedRoute && (
-            <div className="mx-auto mt-4 max-w-sm rounded-[1rem] border border-white/5 bg-white/5 px-4 py-2.5 text-sm backdrop-blur-md shadow-lg">
+            <div className="mx-auto mt-4 max-w-sm rounded-2xl border border-white/5 bg-white/5 px-4 py-2.5 text-sm backdrop-blur-md shadow-lg">
               <p className="font-semibold text-emerald-300">
                 מסלול: {selectedRoute.title}
               </p>
@@ -582,6 +582,11 @@ export default function RidePage({
     const pushPoint = (pos) => {
       const accuracyM = pos.coords.accuracy ?? 50;
 
+      /* עדכון דיוק GPS — ממיר מ-מטרים לאחוז ביטחון (תמיד, גם לפני הסינון) */
+      setGpsAccuracyPct(
+        Math.max(0, Math.min(100, Math.round(100 - accuracyM))),
+      );
+
       /* סינון חכם של עיוותי GPS (רעש במנוחה) */
       if (accuracyM > 20) {
         return; // מדלגים על הנקודה אם הדיוק גרוע מ-20 מטר
@@ -592,11 +597,6 @@ export default function RidePage({
         lng: pos.coords.longitude,
         t: new Date().toISOString(),
       };
-
-      /* עדכון דיוק GPS — ממיר מ-מטרים לאחוז ביטחון */
-      setGpsAccuracyPct(
-        Math.max(0, Math.min(100, Math.round(100 - accuracyM))),
-      );
 
       /* מניעת נקודות כפולות לפי סף מרחק זעיר */
       const last = lastGpsPointRef.current;
