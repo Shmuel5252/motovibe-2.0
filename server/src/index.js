@@ -28,8 +28,26 @@ const { startMaintenanceCron } = require("./jobs/maintenance.cron");
 const app = express();
 const httpServer = http.createServer(app);
 
+// Allowed origins: comma-separated list in CORS_ORIGIN env var (production)
+// Falls back to localhost for local development
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(",").map((o) => o.trim())
+  : ["http://localhost:5173"];
+
 // Middlewares
-app.use(cors());
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow server-to-server requests (no origin) and listed origins
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS: origin '${origin}' not allowed`));
+      }
+    },
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(passport.initialize());
 
