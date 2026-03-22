@@ -147,7 +147,7 @@ function StatusBar({
   weather,
 }) {
   return (
-    <div className="flex w-full items-start justify-between px-5 pt-4 pb-0 sm:px-6">
+    <div className="flex w-full items-start justify-between px-3 pt-2.5 pb-0 sm:px-6 sm:pt-4">
       {/* Right side in RTL (GPS + Weather) */}
       <div className="flex flex-col gap-2 items-end">
         <div
@@ -272,18 +272,22 @@ function Speedometer({ speedKmh, maxSpeedKmh, rideElapsedSeconds }) {
       {/* Integrated Hero Timer */}
       <div className="relative z-10 -mb-6 flex flex-col items-center">
         <span
-          className="font-mono text-[2.75rem] font-light tracking-[0.12em] text-white sm:text-[3.25rem] transition-all duration-300 ease-out"
+          className="font-mono font-light tracking-[0.12em] text-white transition-all duration-300 ease-out"
           style={{
             fontVariantNumeric: "tabular-nums",
             textShadow: "0 0 24px rgba(255,255,255,0.25)",
+            fontSize: "clamp(1.85rem, 8vw, 3.25rem)",
           }}
         >
           {formatElapsed(rideElapsedSeconds)}
         </span>
       </div>
 
-      {/* Hero Speedometer SVG - Scaled up 10-15% */}
-      <div className="relative w-full max-w-72.5 sm:max-w-80 aspect-240/190 transition-all duration-300 ease-out">
+      {/* Hero Speedometer SVG — responsive size via clamp */}
+      <div
+        className="relative aspect-240/190 transition-all duration-300 ease-out"
+        style={{ width: "clamp(200px, 72vw, 320px)" }}
+      >
         <svg
           viewBox="0 0 240 190"
           width="100%"
@@ -458,7 +462,7 @@ function Speedometer({ speedKmh, maxSpeedKmh, rideElapsedSeconds }) {
 
 function TelemetryCell({ icon: Icon, value, unit, label }) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-1.5 px-2 py-4">
+    <div className="flex flex-1 flex-col items-center justify-center gap-1 px-1.5 py-2.5 sm:gap-1.5 sm:px-2 sm:py-4">
       <Icon
         size={14}
         className="text-emerald-400 opacity-80"
@@ -466,7 +470,7 @@ function TelemetryCell({ icon: Icon, value, unit, label }) {
       />
       <div className="flex items-baseline gap-0.5 mt-1">
         <span
-          className="font-mono text-[1.45rem] font-semibold leading-none tracking-tight text-white mb-0.5"
+          className="font-mono text-[1.1rem] sm:text-[1.35rem] font-semibold leading-none tracking-tight text-white mb-0.5"
           style={{ fontVariantNumeric: "tabular-nums" }}
         >
           {value}
@@ -495,7 +499,7 @@ function TelemetryHUD({
   return (
     /* Fluid premium glass telemetry style without harsh borders */
     <div
-      className="relative mx-5 flex items-stretch justify-between overflow-hidden rounded-[22px] sm:mx-6"
+      className="relative mx-3 flex items-stretch justify-between overflow-hidden rounded-[18px] sm:mx-6 sm:rounded-[22px]"
       style={{
         background:
           "linear-gradient(180deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.01) 100%)",
@@ -1164,7 +1168,7 @@ function ActionBar({
 
       {/* Floating glass pill — Anti-Gravity premium dock */}
       <div
-        className="mx-5 mb-6 flex items-center gap-2.5 rounded-full border border-white/10 px-3.5 py-3 sm:mx-6 transition-all duration-300"
+        className="mx-3 mb-3 flex items-center gap-2 rounded-full border border-white/10 px-2.5 py-2 sm:mx-6 sm:mb-6 sm:gap-2.5 sm:px-3.5 sm:py-3 transition-all duration-300"
         style={{
           background:
             "linear-gradient(180deg, rgba(11,19,43,0.7), rgba(11,19,43,0.9))",
@@ -1178,7 +1182,7 @@ function ActionBar({
         <button
           type="button"
           onClick={() => setIsRidePaused((p) => !p)}
-          className="flex flex-1 items-center justify-center gap-2 rounded-full border border-white/5 py-3.5 text-sm font-semibold text-slate-300 transition-all hover:bg-white/10 hover:text-white active:scale-95"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-white/5 py-2.5 text-xs font-semibold text-slate-300 transition-all hover:bg-white/10 hover:text-white active:scale-95 sm:gap-2 sm:py-3.5 sm:text-sm"
           style={{ background: "rgba(255,255,255,0.03)" }}
         >
           {isRidePaused ? (
@@ -1198,7 +1202,7 @@ function ActionBar({
         <button
           type="button"
           onClick={() => setShowNav((v) => !v)}
-          className="flex flex-1 items-center justify-center gap-2 rounded-full border border-white/5 py-3.5 text-sm font-semibold text-slate-300 transition-all hover:bg-white/10 hover:text-white active:scale-95"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-white/5 py-2.5 text-xs font-semibold text-slate-300 transition-all hover:bg-white/10 hover:text-white active:scale-95 sm:gap-2 sm:py-3.5 sm:text-sm"
           style={{ background: "rgba(255,255,255,0.03)" }}
         >
           <Navigation size={15} strokeWidth={2} className="text-slate-400" />
@@ -1209,7 +1213,7 @@ function ActionBar({
         <button
           type="button"
           onClick={onFinish}
-          className="flex flex-1 items-center justify-center gap-2 rounded-full py-3.5 text-sm font-black uppercase tracking-widest transition-all hover:brightness-110 active:scale-95 bg-linear-to-r from-emerald-500 to-teal-400"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-full py-2.5 text-xs font-black uppercase tracking-widest transition-all hover:brightness-110 active:scale-95 bg-linear-to-r from-emerald-500 to-teal-400 sm:gap-2 sm:py-3.5 sm:text-sm"
           style={{
             color: "#020617",
             boxShadow: `0 0 15px rgba(16,185,129,0.4), inset 0 2px 4px rgba(255,255,255,0.4)`,
@@ -1311,10 +1315,10 @@ export default function RideActiveCockpit({
         />
       </div>
 
-      {/* ─── 2. MAIN DATA HUB (Speedometer + Telemetry) ─── */}
-      <div className="flex-1 flex flex-col justify-center relative z-10 w-full px-1">
+      {/* ─── 2. MAIN DATA HUB (Speedometer + Telemetry) — scrolls if needed ─── */}
+      <div className="flex-1 flex flex-col justify-center relative z-10 w-full px-1 overflow-hidden">
         {/* Speedometer */}
-        <div className="flex justify-center pt-2 pb-1 relative z-10 w-full">
+        <div className="flex justify-center pt-1 pb-0.5 relative z-10 w-full">
           <Speedometer
             speedKmh={currentSpeedKmh}
             maxSpeedKmh={maxSpeedKmh}
@@ -1325,12 +1329,12 @@ export default function RideActiveCockpit({
         {/* Route chip (if active) */}
         {selectedRoute && (
           <div
-            className="mx-5 mb-4 flex items-center gap-3 rounded-md border px-3 py-2 sm:mx-6"
+            className="mx-3 mb-2 flex items-center gap-2 rounded-md border px-2.5 py-1.5 sm:mx-6 sm:mb-4 sm:gap-3 sm:px-3 sm:py-2"
             style={{ borderColor: "#1e293b", background: "#0d1117" }}
             dir="rtl"
           >
             <div
-              className="h-4 w-0.5 rounded-full"
+              className="h-3.5 w-0.5 shrink-0 rounded-full sm:h-4"
               style={{ background: NEON, opacity: 0.7 }}
             />
             <p className="truncate text-xs font-bold text-white">
@@ -1345,7 +1349,7 @@ export default function RideActiveCockpit({
         )}
 
         {/* Telemetry HUD */}
-        <div className="flex-none pb-4 shrink-0">
+        <div className="flex-none pb-2 shrink-0 sm:pb-4">
           <TelemetryHUD
             totalDistanceKm={totalDistanceKm}
             rideElapsedSeconds={rideElapsedSeconds}
@@ -1354,8 +1358,8 @@ export default function RideActiveCockpit({
         </div>
       </div>
 
-      {/* ─── 3. BOTTOM SECTION (Map Preview) ─── */}
-      <div className="flex-none relative w-full h-55 p-5 pt-2">
+      {/* ─── 3. MAP PREVIEW — fixed small height on mobile, larger on sm+ ─── */}
+      <div className="flex-none relative w-full h-44 sm:h-52 px-3 pt-1 pb-0 sm:p-5 sm:pt-2">
         <MapPreview
           isMapLoaded={isMapLoaded}
           mapLoadError={mapLoadError}
@@ -1363,12 +1367,12 @@ export default function RideActiveCockpit({
           recordedPath={recordedPath}
           customContainerClass="relative w-full h-full"
           customContainerStyle={{}}
-          innerClassName="rounded-3xl overflow-hidden border border-white/10 shadow-lg relative w-full h-full"
+          innerClassName="rounded-2xl sm:rounded-3xl overflow-hidden border border-white/10 shadow-lg relative w-full h-full"
         />
       </div>
 
-      {/* ─── 4. Bottom Action Bar ─── */}
-      <div className="flex-none">
+      {/* ─── 4. Bottom Action Bar — sticky bottom ─── */}
+      <div className="flex-none sticky bottom-0 z-30">
         <ActionBar
           isRidePaused={isRidePaused}
           setIsRidePaused={setIsRidePaused}
