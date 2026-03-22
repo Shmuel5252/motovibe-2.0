@@ -26,6 +26,7 @@ const eventsRoutes = require("./app/routes/events.routes");
 const notificationsRoutes = require("./app/routes/notifications.routes");
 const { startMaintenanceCron } = require("./jobs/maintenance.cron");
 const app = express();
+app.set("trust proxy", 1);
 const httpServer = http.createServer(app);
 
 // Allowed origins: comma-separated list in CORS_ORIGIN env var (production)
