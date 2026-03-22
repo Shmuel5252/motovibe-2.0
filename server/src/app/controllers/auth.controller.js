@@ -97,7 +97,7 @@ async function me(req, res) {
 function googleCallback(req, res) {
   // req.user is the Mongoose document set by passport strategy
   const token = signToken(req.user._id.toString());
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  const frontendUrl = process.env.CLIENT_URL || "http://localhost:5173";
   // Pass token as query param; client will consume it and remove from URL
   return res.redirect(`${frontendUrl}/?token=${token}`);
 }
