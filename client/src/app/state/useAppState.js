@@ -75,7 +75,11 @@ export default function useAppState() {
     handleUnauthorized: auth.handleUnauthorized,
   });
 
-  const history = useHistory({ apiClient, authToken: auth.authToken });
+  const history = useHistory({
+    apiClient,
+    authToken: auth.authToken,
+    handleUnauthorized: auth.handleUnauthorized,
+  });
 
   const notifs = useNotifications({
     authToken: auth.authToken,

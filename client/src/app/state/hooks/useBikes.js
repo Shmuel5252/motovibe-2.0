@@ -4,6 +4,7 @@
  */
 
 import { useRef, useState } from "react";
+import { extractApiErrorMessage } from "../../utils/apiError";
 
 /**
  * @param {{ apiClient: import("axios").AxiosInstance, authToken: string, handleUnauthorized: Function }} params
@@ -38,7 +39,7 @@ export default function useBikes({ apiClient, authToken, handleUnauthorized }) {
     if (error?.response?.status === 401) {
       handleUnauthorized();
     }
-    return error?.response?.data?.error?.message || fallbackMsg;
+    return extractApiErrorMessage(error, fallbackMsg);
   }
 
   /* ─── Bike CRUD ─── */

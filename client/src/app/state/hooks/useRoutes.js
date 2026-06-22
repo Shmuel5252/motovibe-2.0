@@ -7,6 +7,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ISRAEL_DEFAULT_CENTER } from "./useGoogleMaps";
 import { isValidLatLng } from "../../utils/geo";
+import { extractApiErrorMessage } from "../../utils/apiError";
 
 /**
  * @param {{
@@ -118,7 +119,7 @@ export default function useRoutes({
       }
 
       console.error("Failed to load routes", error);
-      setRoutesLoadError("טעינת מסלולים נכשלה");
+      setRoutesLoadError(extractApiErrorMessage(error, "טעינת מסלולים נכשלה"));
     } finally {
       setIsRoutesLoading(false);
     }

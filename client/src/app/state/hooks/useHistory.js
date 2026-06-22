@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { formatRideDuration } from "../../utils/formatters";
 import { formatDate } from "../../utils/dateUtils";
 import { calculatePathDistance } from "../../utils/geo";
+import { extractApiErrorMessage } from "../../utils/apiError";
 
 /**
  * ממיר מסמך Ride מהשרת לצורה שה-UI מצפה לה.
@@ -59,9 +60,9 @@ function mapRideToUIShape(ride) {
 }
 
 /**
- * @param {{ apiClient: import("axios").AxiosInstance, authToken: string }} params
+ * @param {{ apiClient: import("axios").AxiosInstance, authToken: string, handleUnauthorized: Function }} params
  */
-export default function useHistory({ apiClient, authToken }) {
+export default function useHistory({ apiClient, authToken, handleUnauthorized }) {
   /* ─── State: נתוני היסטוריה ─── */
   const [historyRides, setHistoryRides] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -99,7 +100,12 @@ export default function useHistory({ apiClient, authToken }) {
       const status = error?.response?.status;
       const message = error?.response?.data?.error?.message || error.message;
       console.error(`fetchHistoryFromServer failed [${status}]: ${message}`);
-      setHistoryError("טעינת היסטוריה נכשלה");
+
+      if (status === 401) {
+        handleUnauthorized?.();
+      }
+
+      setHistoryError(extractApiErrorMessage(error, "טעינת היסטוריה נכשלה"));
     } finally {
       setHistoryLoading(false);
     }
