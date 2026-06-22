@@ -4,6 +4,10 @@ const { validationResult } = require("express-validator");
 const Ride = require("../models/Ride");
 const Route = require("../models/Route");
 const { sendValidationError } = require("../utils/validationResponse");
+const {
+  buildRouteSnapshot,
+  applyDistanceToBikeOdometer,
+} = require("../services/rides.service");
 
 function notFound(res) {
   return res.status(404).json({
@@ -51,14 +55,7 @@ async function startRide(req, res) {
     }
 
     /* בניית snapshot מהמסלול */
-    routeSnapshot = {
-      title: foundRoute.title,
-      start: foundRoute.start,
-      end: foundRoute.end,
-      distanceKm: foundRoute.distanceKm,
-      etaMinutes: foundRoute.etaMinutes,
-      polyline: foundRoute.polyline,
-    };
+    routeSnapshot = buildRouteSnapshot(foundRoute);
     route = foundRoute._id;
   }
 
@@ -116,38 +113,7 @@ async function stopRide(req, res) {
 
   /* עדכון מד אוצץ באופנוע הראשי של המשתמש */
   if (typeof distanceKm === "number" && distanceKm > 0) {
-    const Bike = require("../models/Bike");
-    const { createAndEmit } = require("./notifications.controller");
-    const bike = await Bike.findOne({ owner });
-    if (bike) {
-      bike.currentOdometerKm = parseFloat(
-        ((bike.currentOdometerKm || 0) + distanceKm).toFixed(2),
-      );
-      const newOdometer = bike.currentOdometerKm;
-
-      /* בדיקת חצייה של יעדי קילומטראז' */
-      const firedAlerts = [];
-      for (const alert of bike.mileageAlerts || []) {
-        if (newOdometer >= alert.targetKm) {
-          firedAlerts.push(alert.toObject());
-          alert.targetKm = parseFloat((alert.targetKm + 10000).toFixed(2));
-        }
-      }
-
-      await bike.save();
-
-      for (const alert of firedAlerts) {
-        await createAndEmit({
-          recipient: owner,
-          type: "mileage_alert",
-          title: `${alert.type} — הגיע הזמן! 🔔`,
-          body: alert.note
-            ? `הגעת ל-${alert.targetKm.toLocaleString("he-IL")} ק"מ — ${alert.note}`
-            : `האופנוע שלך חצה את יעד הקילומטראז' עבור ${alert.type}.`,
-          link: "bike",
-        });
-      }
-    }
+    await applyDistanceToBikeOdometer({ owner, distanceKm });
   }
 
   await ride.save();
