@@ -1,4 +1,19 @@
 /**
+ * isValidLatLng — בודק שאובייקט נקודה מכיל lat/lng מספריים תקינים.
+ * @param {{lat: number, lng: number}|null|undefined} point
+ * @returns {boolean}
+ */
+export function isValidLatLng(point) {
+  if (!point || typeof point !== "object") {
+    return false;
+  }
+
+  const lat = Number(point.lat);
+  const lng = Number(point.lng);
+  return Number.isFinite(lat) && Number.isFinite(lng);
+}
+
+/**
  * haversineKm — מרחק בק"מ בין שתי נקודות GPS (lat/lng) לפי נוסחת Haversine.
  * @param {{lat: number, lng: number}} a
  * @param {{lat: number, lng: number}} b

@@ -6,6 +6,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ISRAEL_DEFAULT_CENTER } from "./useGoogleMaps";
+import { isValidLatLng } from "../../utils/geo";
 
 /**
  * @param {{
@@ -70,13 +71,8 @@ export default function useRoutes({
   /* ─── Routes Logic ─── */
 
   const toLatLngPoint = (point) => {
-    const lat = Number(point?.lat);
-    const lng = Number(point?.lng);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-      return null;
-    }
-
-    return { lat, lng };
+    if (!isValidLatLng(point)) return null;
+    return { lat: Number(point.lat), lng: Number(point.lng) };
   };
 
   const normalizeRouteFromServer = (route, index) => {

@@ -5,6 +5,7 @@
 
 import { useMemo } from "react";
 import { useJsApiLoader } from "@react-google-maps/api";
+import { isValidLatLng } from "../../utils/geo";
 
 /* ─── קבועים ייצוא ─── */
 export const ISRAEL_DEFAULT_CENTER = { lat: 32.0853, lng: 34.7818 };
@@ -62,15 +63,7 @@ export default function useGoogleMaps(googleMapsApiKey) {
   /**
    * בודק שנקודת מפה תקינה.
    */
-  const isValidMapPoint = (point) => {
-    if (!point || typeof point !== "object") {
-      return false;
-    }
-
-    const lat = Number(point.lat);
-    const lng = Number(point.lng);
-    return Number.isFinite(lat) && Number.isFinite(lng);
-  };
+  const isValidMapPoint = isValidLatLng;
 
   /**
    * מסנן נתיב למסלול לנקודות חוקיות בלבד עבור Polyline.
