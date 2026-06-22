@@ -3,6 +3,7 @@ import BottomNav from "../ui/nav/BottomNav";
 import SideDrawer from "../ui/nav/SideDrawer";
 import TopNav from "../ui/nav/TopNav";
 import NotificationCenter from "../ui/NotificationCenter";
+import { padTwo } from "../utils/formatters";
 
 /*
  * תצורת לשוניות הניווט הראשית.
@@ -65,8 +66,8 @@ function AppShell({
     setRideElapsedSeconds(0);
   };
 
-  const minutes = String(Math.floor(rideElapsedSeconds / 60)).padStart(2, "0");
-  const seconds = String(rideElapsedSeconds % 60).padStart(2, "0");
+  const minutes = padTwo(Math.floor(rideElapsedSeconds / 60));
+  const seconds = padTwo(rideElapsedSeconds % 60);
 
   return (
     <div dir="rtl" className="mv-bg">

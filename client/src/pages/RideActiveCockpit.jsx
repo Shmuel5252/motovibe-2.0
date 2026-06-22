@@ -52,6 +52,7 @@ import {
   ISRAEL_DEFAULT_CENTER,
   ISRAEL_DEFAULT_ZOOM,
 } from "../app/state/useAppState";
+import { padTwo } from "../app/utils/formatters";
 
 /* ─── Design tokens ─── */
 const NEON = "#00FFA3";
@@ -60,10 +61,6 @@ const NEON_DIM = "rgba(0,255,163,0.15)";
 /* ══════════════════════════════════════════════
    HELPERS
    ══════════════════════════════════════════════ */
-
-function padTwo(n) {
-  return String(n).padStart(2, "0");
-}
 
 function formatElapsed(totalSeconds) {
   const h = Math.floor(totalSeconds / 3600);

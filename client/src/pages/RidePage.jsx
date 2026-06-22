@@ -15,23 +15,7 @@ import {
 import { Bike } from "lucide-react";
 import RideControlCenter from "./RideControlCenter";
 import RideActiveCockpit from "./RideActiveCockpit";
-
-/* ─── פונקציית עזר: Haversine — מחשבת מרחק בק"מ בין שתי נקודות GPS ─── */
-
-function haversineKm(a, b) {
-  const R = 6371;
-  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
-  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
-  const sinDLat = Math.sin(dLat / 2);
-  const sinDLng = Math.sin(dLng / 2);
-  const c =
-    sinDLat * sinDLat +
-    Math.cos((a.lat * Math.PI) / 180) *
-      Math.cos((b.lat * Math.PI) / 180) *
-      sinDLng *
-      sinDLng;
-  return R * 2 * Math.atan2(Math.sqrt(c), Math.sqrt(1 - c));
-}
+import { haversineKm } from "../app/utils/geo";
 
 /* ─── RideActiveMap ─── */
 

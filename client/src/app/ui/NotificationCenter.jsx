@@ -1,5 +1,6 @@
 import { Bell, Check, Trash2, X } from "lucide-react";
 import { useEffect, useRef } from "react";
+import { formatRelativeTime } from "../utils/dateUtils";
 
 /**
  * NotificationCenter — לוח התראות עם פעמון ולוח נגרר.
@@ -56,19 +57,6 @@ export default function NotificationCenter({
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
   }, [isOpen, onClose]);
-
-  const formattedTime = (dateStr) => {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    if (diffMins < 1) return "עכשיו";
-    if (diffMins < 60) return `לפני ${diffMins} דק'`;
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `לפני ${diffHours} שע'`;
-    const diffDays = Math.floor(diffHours / 24);
-    return `לפני ${diffDays} ימים`;
-  };
 
   return (
     <>
@@ -141,7 +129,7 @@ export default function NotificationCenter({
                 <NotificationItem
                   key={notif._id}
                   notif={notif}
-                  formattedTime={formattedTime}
+                  formattedTime={formatRelativeTime}
                   onMarkRead={onMarkRead}
                   onDelete={onDelete}
                   onNavigate={onNavigate}

@@ -5,45 +5,8 @@
 
 import { useEffect, useState } from "react";
 import { formatRideDuration } from "../../utils/formatters";
-
-/**
- * עיצוב תאריך כ-DD.MM.YY כמו במוק.
- * @param {string|Date|null} dateInput
- * @returns {string}
- */
-function formatDate(dateInput) {
-  if (!dateInput) return "";
-  const d = new Date(dateInput);
-  if (Number.isNaN(d.getTime())) return "";
-  const day = String(d.getDate()).padStart(2, "0");
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const year = String(d.getFullYear()).slice(-2);
-  return `${day}.${month}.${year}`;
-}
-
-/**
- * חישוב מרחק בק"מ מנתיב GPS לפי נוסחת Haversine.
- * @param {Array<{lat: number, lng: number}>} path
- * @returns {number}
- */
-function calculatePathDistance(path) {
-  if (!Array.isArray(path) || path.length < 2) return 0;
-  const R = 6371;
-  let total = 0;
-  for (let i = 1; i < path.length; i++) {
-    const prev = path[i - 1];
-    const curr = path[i];
-    const dLat = ((curr.lat - prev.lat) * Math.PI) / 180;
-    const dLng = ((curr.lng - prev.lng) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) ** 2 +
-      Math.cos((prev.lat * Math.PI) / 180) *
-      Math.cos((curr.lat * Math.PI) / 180) *
-      Math.sin(dLng / 2) ** 2;
-    total += R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  }
-  return total;
-}
+import { formatDate } from "../../utils/dateUtils";
+import { calculatePathDistance } from "../../utils/geo";
 
 /**
  * ממיר מסמך Ride מהשרת לצורה שה-UI מצפה לה.
