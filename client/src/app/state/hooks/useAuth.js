@@ -199,7 +199,7 @@ export default function useAuth(apiClient) {
       if (typeof onNavigate === "function") onNavigate("home");
     } catch (error) {
       console.error("Auth failed", error);
-      const backendError = error.response?.data?.message;
+      const backendError = error.response?.data?.error?.message;
       let errorMessage =
         authMode === "register"
           ? "שגיאה בהרשמה. בדוק פרטים ונסה שוב."
