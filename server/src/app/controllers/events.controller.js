@@ -2,12 +2,7 @@ const { validationResult } = require("express-validator");
 const mongoose = require("mongoose");
 const RideEvent = require("../models/RideEvent");
 const { createGlobalAndEmit } = require("./notifications.controller");
-
-function sendValidation(res, errors) {
-  return res.status(400).json({
-    error: { code: "VALIDATION_ERROR", details: errors.array() },
-  });
-}
+const { sendValidationError } = require("../utils/validationResponse");
 
 function notFound(res) {
   return res.status(404).json({
@@ -18,7 +13,7 @@ function notFound(res) {
 /** POST /api/events — create a new ride event (auth required) */
 async function createEvent(req, res) {
   const errors = validationResult(req);
-  if (!errors.isEmpty()) return sendValidation(res, errors);
+  if (!errors.isEmpty()) return sendValidationError(res, errors);
 
   const { title, description, scheduledAt, maxParticipants, route } = req.body;
   const organizer = req.user.userId;
@@ -205,7 +200,7 @@ async function cancelEvent(req, res) {
 /** PATCH /api/events/:id — update event details (organizer only) */
 async function updateEvent(req, res) {
   const errors = validationResult(req);
-  if (!errors.isEmpty()) return sendValidation(res, errors);
+  if (!errors.isEmpty()) return sendValidationError(res, errors);
 
   const { id } = req.params;
   if (!mongoose.isValidObjectId(id)) return notFound(res);

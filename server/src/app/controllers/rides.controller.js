@@ -3,6 +3,7 @@ const { validationResult } = require("express-validator");
 
 const Ride = require("../models/Ride");
 const Route = require("../models/Route");
+const { sendValidationError } = require("../utils/validationResponse");
 
 function notFound(res) {
   return res.status(404).json({
@@ -12,14 +13,7 @@ function notFound(res) {
 
 async function startRide(req, res) {
   const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      error: {
-        code: "VALIDATION_ERROR",
-        details: errors.array(),
-      },
-    });
-  }
+  if (!errors.isEmpty()) return sendValidationError(res, errors);
 
   const owner = req.user.userId;
   const { routeId } = req.body;
@@ -183,11 +177,7 @@ async function getRideHistory(req, res) {
 /* עדכון שם רכיבה לפי מזהה */
 async function updateRide(req, res) {
   const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      error: { code: "VALIDATION_ERROR", details: errors.array() },
-    });
-  }
+  if (!errors.isEmpty()) return sendValidationError(res, errors);
 
   const owner = req.user.userId;
   const { id } = req.params;

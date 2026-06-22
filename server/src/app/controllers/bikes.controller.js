@@ -1,16 +1,11 @@
 const { validationResult } = require("express-validator");
 const mongoose = require("mongoose");
 const Bike = require("../models/Bike");
-
-function sendValidation(res, errors) {
-  return res.status(400).json({
-    error: { code: "VALIDATION_ERROR", details: errors.array() },
-  });
-}
+const { sendValidationError } = require("../utils/validationResponse");
 
 async function createBike(req, res) {
   const errors = validationResult(req);
-  if (!errors.isEmpty()) return sendValidation(res, errors);
+  if (!errors.isEmpty()) return sendValidationError(res, errors);
 
   const owner = req.user.userId;
   const { name, make, model, year, currentOdometerKm, engineCc, imageUrl } = req.body;
@@ -53,7 +48,7 @@ async function getMyBike(req, res) {
 
 async function updateMyBike(req, res) {
   const errors = validationResult(req);
-  if (!errors.isEmpty()) return sendValidation(res, errors);
+  if (!errors.isEmpty()) return sendValidationError(res, errors);
 
   const owner = req.user.userId;
   const { id } = req.params;

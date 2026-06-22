@@ -3,17 +3,12 @@ const mongoose = require("mongoose");
 const Route = require("../models/Route");
 const { computeDirections } = require("../services/directions.service");
 const { createGlobalAndEmit } = require("./notifications.controller");
-
-function sendValidation(res, errors) {
-  return res.status(400).json({
-    error: { code: "VALIDATION_ERROR", details: errors.array() },
-  });
-}
+const { sendValidationError } = require("../utils/validationResponse");
 
 async function createRoute(req, res) {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return sendValidation(res, errors);
+    return sendValidationError(res, errors);
   }
 
   const owner = req.user.userId;
@@ -108,7 +103,7 @@ async function getMyRoute(req, res) {
 async function updateMyRoute(req, res) {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return sendValidation(res, errors);
+    return sendValidationError(res, errors);
   }
   const owner = req.user.userId;
   const { id } = req.params;

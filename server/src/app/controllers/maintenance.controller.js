@@ -4,12 +4,7 @@ const mongoose = require("mongoose");
 const Bike = require("../models/Bike");
 const MaintenanceLog = require("../models/MaintenanceLog");
 const MaintenancePlan = require("../models/MaintenancePlan");
-
-function sendValidation(res, errors) {
-  return res.status(400).json({
-    error: { code: "VALIDATION_ERROR", details: errors.array() },
-  });
-}
+const { sendValidationError } = require("../utils/validationResponse");
 
 async function assertBikeOwner(owner, bikeId) {
   if (!mongoose.isValidObjectId(bikeId)) return null;
@@ -35,7 +30,7 @@ async function getBikeMaintenance(req, res) {
 // POST /api/bikes/:id/maintenance/logs
 async function addMaintenanceLog(req, res) {
   const errors = validationResult(req);
-  if (!errors.isEmpty()) return sendValidation(res, errors);
+  if (!errors.isEmpty()) return sendValidationError(res, errors);
 
   const owner = req.user.userId;
   const bikeId = req.params.id;
@@ -67,7 +62,7 @@ async function addMaintenanceLog(req, res) {
 // POST /api/bikes/:id/maintenance/plans
 async function upsertMaintenancePlan(req, res) {
   const errors = validationResult(req);
-  if (!errors.isEmpty()) return sendValidation(res, errors);
+  if (!errors.isEmpty()) return sendValidationError(res, errors);
 
   const owner = req.user.userId;
   const bikeId = req.params.id;
@@ -150,7 +145,7 @@ async function getMaintenanceAlerts(req, res) {
 // PATCH /api/bikes/:id/maintenance/logs/:logId
 async function updateMaintenanceLog(req, res) {
   const errors = validationResult(req);
-  if (!errors.isEmpty()) return sendValidation(res, errors);
+  if (!errors.isEmpty()) return sendValidationError(res, errors);
 
   const owner = req.user.userId;
   const bikeId = req.params.id;
