@@ -11,7 +11,7 @@ const healthRoutes = require("./app/routes/health.routes");
 
 const authRoutes = require("./app/routes/auth.routes");
 
-const routesRoutes = require("./app/routes/routes.routes");
+const routeRoutes = require("./app/routes/route.routes");
 
 const ridesRoutes = require("./app/routes/rides.routes");
 
@@ -60,7 +60,7 @@ app.use("/api/health", healthRoutes);
 
 app.use("/api/auth", authRoutes);
 
-app.use("/api/routes", routesRoutes);
+app.use("/api/routes", routeRoutes);
 
 app.use("/api/bikes", bikesRoutes);
 
