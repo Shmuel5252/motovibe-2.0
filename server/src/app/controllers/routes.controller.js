@@ -2,8 +2,8 @@ const { validationResult } = require("express-validator");
 const mongoose = require("mongoose");
 const Route = require("../models/Route");
 const { computeDirections } = require("../services/directions.service");
-const { createGlobalAndEmit } = require("./notifications.controller");
 const { sendValidationError } = require("../utils/validationResponse");
+const { notifyPublicRouteShared } = require("../services/routes.service");
 
 async function createRoute(req, res) {
   const errors = validationResult(req);
@@ -53,16 +53,12 @@ async function createRoute(req, res) {
 
   // Fire-and-forget global notification when a public route is shared with the community
   if (safeVisibility === "public") {
-    console.log(
-      `[notifications] 🔔 Public route "${title}" saved (_id=${route._id}) — calling createGlobalAndEmit`,
-    );
-    createGlobalAndEmit({
-      type: "route_new",
-      title: "מסלול חדש בקהילה!",
-      body: `${title} — ${Math.round(distanceKm)} ק"מ`,
-      link: "community",
-      sender: owner,
-    }).catch((err) => console.error("[notifications] route_new FAILED:", err));
+    notifyPublicRouteShared({
+      title,
+      distanceKm,
+      owner,
+      logContext: `Public route "${title}" saved (_id=${route._id})`,
+    });
   } else {
     console.log(
       `[notifications] Route "${title}" visibility=${safeVisibility} — no global notification`,
@@ -172,16 +168,12 @@ async function updateMyRoute(req, res) {
   // Fire notification when route is published for the first time (private → public)
   const isNowPublic = update.visibility === "public";
   if (!wasPublic && isNowPublic) {
-    console.log(
-      `[notifications] 🔔 Route "${route.title}" published (_id=${route._id}) — calling createGlobalAndEmit`,
-    );
-    createGlobalAndEmit({
-      type: "route_new",
-      title: "מסלול חדש בקהילה!",
-      body: `${route.title} — ${Math.round(route.distanceKm)} ק"מ`,
-      link: "community",
-      sender: owner,
-    }).catch((err) => console.error("[notifications] route_new FAILED:", err));
+    notifyPublicRouteShared({
+      title: route.title,
+      distanceKm: route.distanceKm,
+      owner,
+      logContext: `Route "${route.title}" published (_id=${route._id})`,
+    });
   }
 
   return res.status(200).json({ route });
