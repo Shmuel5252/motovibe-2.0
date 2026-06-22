@@ -5,6 +5,7 @@ const Bike = require("../models/Bike");
 const MaintenanceLog = require("../models/MaintenanceLog");
 const MaintenancePlan = require("../models/MaintenancePlan");
 const { sendValidationError } = require("../utils/validationResponse");
+const { syncBikeOdometerFromLog } = require("../services/maintenance.service");
 
 async function assertBikeOwner(owner, bikeId) {
   if (!mongoose.isValidObjectId(bikeId)) return null;
@@ -51,10 +52,7 @@ async function addMaintenanceLog(req, res) {
   });
 
   // optional: keep bike odometer in sync if log odometer is newer
-  if (typeof odometerKm === "number" && (bike.currentOdometerKm == null || odometerKm > bike.currentOdometerKm)) {
-    bike.currentOdometerKm = odometerKm;
-    await bike.save();
-  }
+  await syncBikeOdometerFromLog(bike, odometerKm);
 
   return res.status(201).json({ log });
 }
