@@ -6,14 +6,7 @@ import { useEffect } from "react";
 import Button from "../app/ui/components/Button";
 import GlassCard from "../app/ui/components/GlassCard";
 import { formatRideDuration } from "../app/utils/formatters";
-
-const IMG_BASE =
-  import.meta.env.VITE_API_BASE_URL?.replace("/api", "") ||
-  "http://localhost:5000";
-function imgSrc(url) {
-  if (!url) return null;
-  return url.startsWith("http") ? url : `${IMG_BASE}${url}`;
-}
+import { imgSrc } from "../app/utils/imageUrl";
 
 /**
  * באנר רכיבה פעילה לטאבים שאינם מסך הרכיבה.

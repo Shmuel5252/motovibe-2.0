@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 import Button from "../app/ui/components/Button";
 import GlassCard from "../app/ui/components/GlassCard";
 import { Bike, Pencil, Trash2, ChevronDown, Bell } from "lucide-react";
+import { imgSrc } from "../app/utils/imageUrl";
 
 /* ─── קבועים ─── */
 
@@ -22,14 +23,6 @@ const TYPE_ICONS = {
   כללי: "⌖",
   אחר: "◇",
 };
-
-const IMG_BASE =
-  import.meta.env.VITE_API_BASE_URL?.replace("/api", "") ||
-  "http://localhost:5000";
-function imgSrc(url) {
-  if (!url) return null;
-  return url.startsWith("http") ? url : `${IMG_BASE}${url}`;
-}
 
 /* ─── MileageAlertModal ─── */
 

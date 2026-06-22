@@ -14,6 +14,7 @@ import {
 import Button from "../app/ui/components/Button";
 import GlassCard from "../app/ui/components/GlassCard";
 import { formatRideDuration } from "../app/utils/formatters";
+import { imgSrc } from "../app/utils/imageUrl";
 import {
   ISRAEL_DEFAULT_CENTER,
   ISRAEL_DEFAULT_ZOOM,
@@ -35,10 +36,6 @@ import {
 } from "lucide-react";
 
 /* ─── constants ─────────────────────────────────────────────────────── */
-
-const IMG_BASE =
-  import.meta.env.VITE_API_BASE_URL?.replace("/api", "") ||
-  "http://localhost:5000";
 
 const DARK_MAP_STYLE = [
   { elementType: "geometry", stylers: [{ color: "#0f172a" }] },
@@ -71,13 +68,6 @@ const DARK_MAP_STYLE = [
     stylers: [{ color: "#1e293b" }],
   },
 ];
-
-/* ─── helper: normalise image URL ──────────────────────────────────── */
-
-function imgSrc(url) {
-  if (!url) return null;
-  return url.startsWith("http") ? url : `${IMG_BASE}${url}`;
-}
 
 /* ─── CustomSelect ─────────────────────────────────────────────────── */
 

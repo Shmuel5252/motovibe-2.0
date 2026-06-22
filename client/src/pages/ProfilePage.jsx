@@ -16,15 +16,7 @@ import {
 } from "lucide-react";
 import GlassCard from "../app/ui/components/GlassCard";
 import { formatRideDuration } from "../app/utils/formatters";
-
-const IMG_BASE =
-  import.meta.env.VITE_API_BASE_URL?.replace("/api", "") ||
-  "http://localhost:5000";
-
-function imgSrc(url) {
-  if (!url) return null;
-  return url.startsWith("http") ? url : `${IMG_BASE}${url}`;
-}
+import { imgSrc } from "../app/utils/imageUrl";
 
 export default function ProfilePage({
   currentUser,
