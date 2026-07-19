@@ -3,6 +3,7 @@ node_modules/
 
 # environment
 .env
+client/.env.production
 
 # builds
 dist/
