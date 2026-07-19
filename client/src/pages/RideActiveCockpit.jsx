@@ -1280,7 +1280,7 @@ export default function RideActiveCockpit({
           const temp = Math.round(data.main.temp);
           const condition = data.weather[0].main;
           setWeather({ temp, condition, isLoading: false, error: false });
-        } catch (err) {
+        } catch {
           setWeather({
             temp: null,
             condition: null,

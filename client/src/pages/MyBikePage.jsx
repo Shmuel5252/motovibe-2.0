@@ -793,7 +793,7 @@ export default function MyBikePage({
     try {
       await deleteBike(bike._id);
       setConfirmDeleteBike(false);
-    } catch (err) {
+    } catch {
       setBikeDeleteError("שגיאה במחיקת האופנוע");
     }
   };

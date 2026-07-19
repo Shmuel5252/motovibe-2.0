@@ -41,22 +41,6 @@ const RideActiveMap = memo(function RideActiveMap({
     }
   }, [mapInstance, myLocation, routePath]);
 
-  if (mapLoadError) {
-    return (
-      <div className="flex h-full items-center justify-center bg-slate-900/60 text-sm text-slate-200">
-        שגיאה בטעינת המפה
-      </div>
-    );
-  }
-
-  if (!isMapLoaded) {
-    return (
-      <div className="flex h-full items-center justify-center bg-slate-900/60 text-sm text-slate-200">
-        טוען מפה...
-      </div>
-    );
-  }
-
   const mapOptions = useMemo(
     () => ({
       disableDefaultUI: true,
@@ -77,6 +61,22 @@ const RideActiveMap = memo(function RideActiveMap({
     }),
     [],
   );
+
+  if (mapLoadError) {
+    return (
+      <div className="flex h-full items-center justify-center bg-slate-900/60 text-sm text-slate-200">
+        שגיאה בטעינת המפה
+      </div>
+    );
+  }
+
+  if (!isMapLoaded) {
+    return (
+      <div className="flex h-full items-center justify-center bg-slate-900/60 text-sm text-slate-200">
+        טוען מפה...
+      </div>
+    );
+  }
 
   return (
     <GoogleMap

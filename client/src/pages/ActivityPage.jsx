@@ -13,7 +13,6 @@ import {
 } from "@react-google-maps/api";
 import Button from "../app/ui/components/Button";
 import GlassCard from "../app/ui/components/GlassCard";
-import { formatRideDuration } from "../app/utils/formatters";
 import { imgSrc } from "../app/utils/imageUrl";
 import {
   ISRAEL_DEFAULT_CENTER,
@@ -27,7 +26,7 @@ import {
   Camera,
   Trash2,
   Timer,
-  Infinity,
+  Infinity as InfinityIcon,
   ChevronDown,
   Globe,
   Lock,
@@ -930,7 +929,7 @@ function RouteDetailModal({
           </span>
           {route?.isTwisty && (
             <span className="flex items-center gap-1.5 rounded-full bg-[#00FFA3]/10 border border-[#00FFA3]/30 px-3.5 py-1 text-[11px] uppercase tracking-wider font-bold text-[#00FFA3] shadow-sm backdrop-blur-sm">
-              מפותל <Infinity size={14} strokeWidth={2.5} />
+              מפותל <InfinityIcon size={14} strokeWidth={2.5} />
             </span>
           )}
         </div>
@@ -1653,7 +1652,7 @@ function AddRouteModal({
               className="h-5 w-5 rounded border-none bg-black/50 text-[#00FFA3] focus:ring-0 cursor-pointer"
             />
             <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-300 group-hover:text-white transition">
-              מפותל <Infinity size={14} strokeWidth={2.5} />
+              מפותל <InfinityIcon size={14} strokeWidth={2.5} />
             </span>
           </label>
         </div>

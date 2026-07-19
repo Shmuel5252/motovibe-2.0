@@ -56,6 +56,12 @@ async function login(req, res) {
     });
   }
 
+  if (!user.passwordHash) {
+    return res.status(401).json({
+      error: { code: "UNAUTHORIZED", message: "Invalid credentials" },
+    });
+  }
+
   const ok = await bcrypt.compare(password, user.passwordHash);
   if (!ok) {
     return res.status(401).json({
@@ -107,7 +113,7 @@ async function updateProfile(req, res) {
   if (avatarUrl !== undefined) {
     updates.avatarUrl = avatarUrl || null;
   }
-  const user = await User.findByIdAndUpdate(req.user._id, updates, {
+  const user = await User.findByIdAndUpdate(req.user.userId, updates, {
     new: true,
   });
   return res.json({ user: publicUser(user) });
