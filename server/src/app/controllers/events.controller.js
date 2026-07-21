@@ -33,7 +33,7 @@ async function createEvent(req, res) {
     type: "event_new",
     title: "רכיבה קבוצתית חדשה!",
     body: title,
-    link: "community",
+    link: "community:events",
     sender: organizer,
   }).catch((err) => console.error("[notifications] event_new:", err));
 

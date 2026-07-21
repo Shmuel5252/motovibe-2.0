@@ -28,6 +28,7 @@ function AppShell({
   onMarkRead,
   onMarkAllRead,
   onDeleteNotification,
+  onSubTabNavigate,
 }) {
   const [activeTab, setActiveTab] = useState("home");
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -50,7 +51,9 @@ function AppShell({
   }, [isRideActive, isRidePaused]);
 
   const onNavigate = (tabKey) => {
-    setActiveTab(tabKey);
+    const [mainTab, subTab] = tabKey.split(":");
+    if (subTab && onSubTabNavigate) onSubTabNavigate(mainTab, subTab);
+    setActiveTab(mainTab);
     setIsDrawerOpen(false);
     setIsNotifOpen(false);
   };

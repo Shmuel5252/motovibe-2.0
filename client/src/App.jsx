@@ -130,6 +130,9 @@ function App() {
       onMarkRead={state.markNotificationRead}
       onMarkAllRead={state.markAllNotificationsRead}
       onDeleteNotification={state.deleteNotification}
+      onSubTabNavigate={(mainTab, subTab) => {
+        if (mainTab === "community") setCommunityPendingTab(subTab);
+      }}
     >
       {({
         activeTab,
